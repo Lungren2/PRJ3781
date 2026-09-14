@@ -9,13 +9,15 @@ getDb()
 
 const app = express()
 
-app.use(cors({
-  origin(origin, callback) {
-    // Same-origin and tooling requests arrive without an Origin header.
-    if (!origin || config.cors.origins.includes(origin)) return callback(null, true)
-    return callback(new Error(`origin not allowed: ${origin}`))
-  },
-}))
+app.use(
+  cors({
+    origin(origin, callback) {
+      // Same-origin and tooling requests arrive without an Origin header.
+      if (!origin || config.cors.origins.includes(origin)) return callback(null, true)
+      return callback(new Error(`origin not allowed: ${origin}`))
+    },
+  }),
+)
 
 app.use('/api', router)
 

@@ -1,12 +1,26 @@
-import { createCrawlContext, BudgetExceededError, RobotsDisallowedError, HostCooledOffError, OfflineCacheMissError } from '../http/fetcher.js'
+import {
+  createCrawlContext,
+  BudgetExceededError,
+  RobotsDisallowedError,
+  HostCooledOffError,
+  OfflineCacheMissError,
+} from '../http/fetcher.js'
 import { enabledProviders, getProvider } from '../providers/index.js'
 import { upsertCertification, markDelisted, startRun, finishRun } from '../db/repository.js'
 import { nowIso } from '../db/index.js'
 
-const EXPECTED = [BudgetExceededError, RobotsDisallowedError, HostCooledOffError, OfflineCacheMissError]
+const EXPECTED = [
+  BudgetExceededError,
+  RobotsDisallowedError,
+  HostCooledOffError,
+  OfflineCacheMissError,
+]
 const isExpected = (error) => EXPECTED.some((type) => error instanceof type)
 
-export async function crawlProvider(provider, { offline = false, dryRun = false, maxPages, verbose = true } = {}) {
+export async function crawlProvider(
+  provider,
+  { offline = false, dryRun = false, maxPages, verbose = true } = {},
+) {
   const ctx = createCrawlContext({ offline, verbose })
   const { id: runId, startedAt } = startRun(provider.id)
   const counts = { seen: 0, upserted: 0, skipped: 0 }
@@ -14,7 +28,9 @@ export async function crawlProvider(provider, { offline = false, dryRun = false,
   let status = 'ok'
   let failure = null
 
-  console.log(`[crawl] ${provider.id}: starting${offline ? ' (offline)' : ''}${dryRun ? ' (dry run)' : ''}`)
+  console.log(
+    `[crawl] ${provider.id}: starting${offline ? ' (offline)' : ''}${dryRun ? ' (dry run)' : ''}`,
+  )
 
   try {
     const iterator = provider.crawl(ctx, { maxPages })
@@ -50,7 +66,13 @@ export async function crawlProvider(provider, { offline = false, dryRun = false,
     delisted = markDelisted(provider.id, startedAt)
   }
 
-  finishRun(runId, { status, stats: ctx.stats, counts, completePass, error: failure?.message ?? null })
+  finishRun(runId, {
+    status,
+    stats: ctx.stats,
+    counts,
+    completePass,
+    error: failure?.message ?? null,
+  })
 
   const summary = {
     provider: provider.id,
@@ -66,9 +88,7 @@ export async function crawlProvider(provider, { offline = false, dryRun = false,
 }
 
 export async function crawlAll({ providerId, ...options } = {}) {
-  const targets = providerId
-    ? [getProvider(providerId)].filter(Boolean)
-    : enabledProviders()
+  const targets = providerId ? [getProvider(providerId)].filter(Boolean) : enabledProviders()
 
   if (providerId && targets.length === 0) {
     throw new Error(`unknown provider: ${providerId}`)

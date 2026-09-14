@@ -33,7 +33,9 @@ export async function exportSnapshot(targetPath = config.snapshotPath) {
   fs.writeFileSync(targetPath, `${JSON.stringify(snapshot, null, 2)}\n`)
 
   const bytes = fs.statSync(targetPath).size
-  console.log(`[export] wrote ${snapshot.included} of ${total} records to ${targetPath} (${(bytes / 1024).toFixed(0)} KB)`)
+  console.log(
+    `[export] wrote ${snapshot.included} of ${total} records to ${targetPath} (${(bytes / 1024).toFixed(0)} KB)`,
+  )
   return snapshot
 }
 

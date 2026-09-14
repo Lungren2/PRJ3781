@@ -13,6 +13,13 @@ npm run dev
 
 Open the local address printed by Vite, normally `http://127.0.0.1:5173/`.
 
+Format the repository or check formatting without writing changes:
+
+```bash
+npm run fmt
+npm run fmt:check
+```
+
 The certifications page falls back to a saved snapshot when the API is not running.
 To browse live listings, start the crawler service in a second terminal:
 

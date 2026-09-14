@@ -29,7 +29,9 @@ export function PageIntro({ eyebrow, title, copy, children, tone = 'light' }) {
   )
 }
 
-export function PreviewNotice({ children = 'This page uses sample content and frontend-only interactions.' }) {
+export function PreviewNotice({
+  children = 'This page uses sample content and frontend-only interactions.',
+}) {
   return (
     <div className="preview-notice" role="note">
       <Info size={17} aria-hidden="true" />
@@ -45,7 +47,9 @@ export function StatusPill({ children, tone = 'sage' }) {
 export function SkillTags({ skills }) {
   return (
     <div className="skill-tags" aria-label="Skills">
-      {skills.map((skill) => <span key={skill}>{skill}</span>)}
+      {skills.map((skill) => (
+        <span key={skill}>{skill}</span>
+      ))}
     </div>
   )
 }
@@ -56,7 +60,9 @@ export function JobRow({ job, showMatch = false }) {
 
   return (
     <article className="job-row">
-      <div className={`company-mark company-mark--${job.tone}`} aria-hidden="true">{job.mark}</div>
+      <div className={`company-mark company-mark--${job.tone}`} aria-hidden="true">
+        {job.mark}
+      </div>
       <div className="job-row__main">
         <div className="job-row__title-line">
           <div>
@@ -66,9 +72,15 @@ export function JobRow({ job, showMatch = false }) {
           {showMatch && <span className="match-score">{job.match}% match</span>}
         </div>
         <div className="job-row__meta">
-          <span><MapPin size={15} aria-hidden="true" /> {job.location} - {job.mode}</span>
-          <span><BriefcaseBusiness size={15} aria-hidden="true" /> {job.type}</span>
-          <span><Clock3 size={15} aria-hidden="true" /> {job.posted}</span>
+          <span>
+            <MapPin size={15} aria-hidden="true" /> {job.location} - {job.mode}
+          </span>
+          <span>
+            <BriefcaseBusiness size={15} aria-hidden="true" /> {job.type}
+          </span>
+          <span>
+            <Clock3 size={15} aria-hidden="true" /> {job.posted}
+          </span>
         </div>
         <SkillTags skills={job.skills} />
       </div>
@@ -83,15 +95,25 @@ export function JobRow({ job, showMatch = false }) {
             aria-pressed={saved}
             onClick={() => {
               setSaved((value) => !value)
-              toast(saved ? 'Removed from your preview saves.' : 'Saved locally for this preview session.')
+              toast(
+                saved
+                  ? 'Removed from your preview saves.'
+                  : 'Saved locally for this preview session.',
+              )
             }}
           >
-            {saved ? <Check size={18} aria-hidden="true" /> : <Bookmark size={18} aria-hidden="true" />}
+            {saved ? (
+              <Check size={18} aria-hidden="true" />
+            ) : (
+              <Bookmark size={18} aria-hidden="true" />
+            )}
           </button>
           <button
             className="text-action"
             type="button"
-            onClick={() => toast('The full job detail and application flow will connect here later.')}
+            onClick={() =>
+              toast('The full job detail and application flow will connect here later.')
+            }
           >
             View role <ArrowUpRight size={16} aria-hidden="true" />
           </button>
@@ -114,7 +136,9 @@ export function JobList({ items, showMatch = false }) {
 
   return (
     <div className="job-list">
-      {items.map((job) => <JobRow key={job.id} job={job} showMatch={showMatch} />)}
+      {items.map((job) => (
+        <JobRow key={job.id} job={job} showMatch={showMatch} />
+      ))}
     </div>
   )
 }
@@ -154,10 +178,14 @@ export function SearchPanel({
             />
           </div>
         </label>
-        <button className="button button--dark" type="submit">Search jobs</button>
+        <button className="button button--dark" type="submit">
+          Search jobs
+        </button>
       </div>
       <div className="search-panel__filters">
-        <span><SlidersHorizontal size={16} aria-hidden="true" /> Filters</span>
+        <span>
+          <SlidersHorizontal size={16} aria-hidden="true" /> Filters
+        </span>
         {children}
       </div>
     </form>
@@ -169,7 +197,11 @@ export function RouteList({ items }) {
     <div className="route-list">
       {items.map(({ to, title, description, meta, icon: Icon }) => (
         <Link key={to} to={to} className="route-list__item">
-          {Icon && <span className="route-list__icon"><Icon size={21} aria-hidden="true" /></span>}
+          {Icon && (
+            <span className="route-list__icon">
+              <Icon size={21} aria-hidden="true" />
+            </span>
+          )}
           <span className="route-list__copy">
             <strong>{title}</strong>
             <span>{description}</span>
@@ -185,8 +217,13 @@ export function RouteList({ items }) {
 export function ProgressBar({ value, label }) {
   return (
     <div className="progress-block">
-      <div><span>{label}</span><strong>{value}%</strong></div>
-      <span className="progress-track" aria-hidden="true"><span style={{ width: `${value}%` }} /></span>
+      <div>
+        <span>{label}</span>
+        <strong>{value}%</strong>
+      </div>
+      <span className="progress-track" aria-hidden="true">
+        <span style={{ width: `${value}%` }} />
+      </span>
     </div>
   )
 }

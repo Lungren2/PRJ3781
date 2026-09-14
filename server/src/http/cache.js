@@ -52,25 +52,30 @@ export function writeCache(url, { status, headers, body }) {
     body_bytes: Buffer.byteLength(body),
   }
 
-  getDb().prepare(`
+  getDb()
+    .prepare(`
     INSERT INTO http_cache (url_hash, url, status, etag, last_modified, fetched_at, fresh_until, body_path, body_bytes)
     VALUES (@url_hash, @url, @status, @etag, @last_modified, @fetched_at, @fresh_until, @body_path, @body_bytes)
     ON CONFLICT (url_hash) DO UPDATE SET
       status = @status, etag = @etag, last_modified = @last_modified,
       fetched_at = @fetched_at, fresh_until = @fresh_until,
       body_path = @body_path, body_bytes = @body_bytes
-  `).run(record)
+  `)
+    .run(record)
 
   return record
 }
 
 /** Refresh freshness after a 304, so a revalidated entry does not re-ask immediately. */
 export function touchCache(url, headers) {
-  getDb().prepare('UPDATE http_cache SET fetched_at = ?, fresh_until = ? WHERE url_hash = ?')
+  getDb()
+    .prepare('UPDATE http_cache SET fetched_at = ?, fresh_until = ? WHERE url_hash = ?')
     .run(nowIso(), freshUntilFrom(headers), hashUrl(url))
 }
 
 export function cacheStats() {
-  const row = getDb().prepare('SELECT COUNT(*) AS entries, COALESCE(SUM(body_bytes), 0) AS bytes FROM http_cache').get()
+  const row = getDb()
+    .prepare('SELECT COUNT(*) AS entries, COALESCE(SUM(body_bytes), 0) AS bytes FROM http_cache')
+    .get()
   return row
 }

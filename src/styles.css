@@ -225,7 +225,10 @@ p {
   transform: translateY(-1rem);
   visibility: hidden;
   overflow-y: auto;
-  transition: opacity 220ms var(--ease-out), transform 320ms var(--ease-out), visibility 0s linear 320ms;
+  transition:
+    opacity 220ms var(--ease-out),
+    transform 320ms var(--ease-out),
+    visibility 0s linear 320ms;
 }
 
 .mobile-home-link {
@@ -262,7 +265,10 @@ p {
   pointer-events: auto;
   transform: translateY(0);
   visibility: visible;
-  transition: opacity 220ms var(--ease-out), transform 320ms var(--ease-out), visibility 0s linear 0s;
+  transition:
+    opacity 220ms var(--ease-out),
+    transform 320ms var(--ease-out),
+    visibility 0s linear 0s;
 }
 
 .mobile-menu nav {
@@ -297,7 +303,10 @@ p {
   font-size: 0.875rem;
   font-weight: 700;
   cursor: pointer;
-  transition: transform 180ms var(--ease-out), background-color 180ms ease, color 180ms ease;
+  transition:
+    transform 180ms var(--ease-out),
+    background-color 180ms ease,
+    color 180ms ease;
 }
 
 .button--dark {
@@ -853,7 +862,9 @@ p {
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, 1rem);
-  transition: opacity 220ms ease, transform 320ms var(--ease-out);
+  transition:
+    opacity 220ms ease,
+    transform 320ms var(--ease-out);
 }
 
 .toast--visible {
@@ -1780,7 +1791,9 @@ p {
   border: 0.125rem dashed var(--color-line);
   background: var(--color-surface);
   text-align: center;
-  transition: border-color 180ms ease, background-color 180ms ease;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease;
 }
 
 .drop-zone--active,
@@ -3009,7 +3022,9 @@ p {
 .menu-button {
   border: 0.0625rem solid var(--color-line);
   background: var(--color-surface);
-  transition: background-color 180ms ease, border-color 180ms ease;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease;
 }
 
 .mobile-menu {
@@ -3112,7 +3127,9 @@ p {
   font-size: 0.8125rem;
   font-weight: 650;
   cursor: pointer;
-  transition: background-color 180ms ease, color 180ms ease;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
 }
 
 .nav-dropdown__trigger svg {
@@ -3219,7 +3236,9 @@ p {
     min-height: 2.75rem;
     padding: 0 var(--space-sm);
     border-radius: 0.25rem;
-    transition: background-color 180ms ease, color 180ms ease;
+    transition:
+      background-color 180ms ease,
+      color 180ms ease;
   }
 
   .desktop-nav > a.active,

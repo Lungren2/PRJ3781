@@ -1,7 +1,14 @@
 import { useMemo, useState } from 'react'
 import { ArrowRight, FileText, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { JobList, PageIntro, PreviewNotice, ProgressBar, SearchPanel, StatusPill } from '../components/ProductUI.jsx'
+import {
+  JobList,
+  PageIntro,
+  PreviewNotice,
+  ProgressBar,
+  SearchPanel,
+  StatusPill,
+} from '../components/ProductUI.jsx'
 import { jobs } from '../data/mockData.js'
 import { useToast } from '../components/ToastContext.jsx'
 
@@ -43,7 +50,9 @@ export function JobsPage({ preset = 'All' }) {
         title={title}
         copy="Search realistic sample listings and try the filters that will later connect to the live opportunity database."
       >
-        <Link className="button button--outline" to="/jobs/recommended">See recommended jobs</Link>
+        <Link className="button button--outline" to="/jobs/recommended">
+          See recommended jobs
+        </Link>
       </PageIntro>
       <div className="page-container jobs-workspace">
         <SearchPanel
@@ -73,15 +82,38 @@ export function JobsPage({ preset = 'All' }) {
               </button>
             ))}
           </div>
-          <label className="compact-select"><span className="sr-only">Work setup</span><select value={mode} onChange={(event) => setMode(event.target.value)}><option>All setups</option><option>On-site</option><option>Hybrid</option><option>Remote</option><option>Remote-friendly</option><option>Flexible</option></select></label>
+          <label className="compact-select">
+            <span className="sr-only">Work setup</span>
+            <select value={mode} onChange={(event) => setMode(event.target.value)}>
+              <option>All setups</option>
+              <option>On-site</option>
+              <option>Hybrid</option>
+              <option>Remote</option>
+              <option>Remote-friendly</option>
+              <option>Flexible</option>
+            </select>
+          </label>
         </SearchPanel>
 
-        <PreviewNotice>Search and filters work against mock listings in this frontend. No crawler or database is connected yet.</PreviewNotice>
+        <PreviewNotice>
+          Search and filters work against mock listings in this frontend. No crawler or database is
+          connected yet.
+        </PreviewNotice>
 
         <section className="results-section" aria-labelledby="job-results-title">
           <div className="results-toolbar">
-            <div><p className="eyebrow">Current results</p><h2 id="job-results-title">{results.length} sample jobs</h2></div>
-            <label className="sort-control"><SlidersHorizontal size={16} aria-hidden="true" /><span>Sort</span><select value={sort} onChange={(event) => setSort(event.target.value)}><option>Most recent</option><option>Best match</option></select></label>
+            <div>
+              <p className="eyebrow">Current results</p>
+              <h2 id="job-results-title">{results.length} sample jobs</h2>
+            </div>
+            <label className="sort-control">
+              <SlidersHorizontal size={16} aria-hidden="true" />
+              <span>Sort</span>
+              <select value={sort} onChange={(event) => setSort(event.target.value)}>
+                <option>Most recent</option>
+                <option>Best match</option>
+              </select>
+            </label>
           </div>
           <JobList items={results} />
         </section>
@@ -104,21 +136,35 @@ export function RecommendedJobsPage() {
 
       <div className="page-container recommendation-layout">
         <aside className="match-profile">
-          <span className="match-profile__icon"><Sparkles size={24} aria-hidden="true" /></span>
+          <span className="match-profile__icon">
+            <Sparkles size={24} aria-hidden="true" />
+          </span>
           <p className="eyebrow">Matching profile</p>
           <h2>Help Morrow learn what fits.</h2>
           <p>Add a resume and preferences to improve the future recommendations shown here.</p>
           <ProgressBar value={72} label="Preview profile" />
-          <Link className="button button--dark" to="/candidates/resume"><FileText size={17} aria-hidden="true" /> Upload resume</Link>
+          <Link className="button button--dark" to="/candidates/resume">
+            <FileText size={17} aria-hidden="true" /> Upload resume
+          </Link>
           <div className="preference-summary">
-            <span>Design</span><span>Data</span><span>Hybrid</span><span>Cape Town</span>
+            <span>Design</span>
+            <span>Data</span>
+            <span>Hybrid</span>
+            <span>Cape Town</span>
           </div>
         </aside>
         <section className="recommended-results" aria-labelledby="recommended-title">
-          <PreviewNotice>Match percentages are static sample values for the UI shell.</PreviewNotice>
+          <PreviewNotice>
+            Match percentages are static sample values for the UI shell.
+          </PreviewNotice>
           <div className="content-heading">
-            <div><p className="eyebrow">Based on sample preferences</p><h2 id="recommended-title">Strong starting points</h2></div>
-            <Link className="inline-link product-inline-link" to="/jobs">All active jobs <ArrowRight size={17} /></Link>
+            <div>
+              <p className="eyebrow">Based on sample preferences</p>
+              <h2 id="recommended-title">Strong starting points</h2>
+            </div>
+            <Link className="inline-link product-inline-link" to="/jobs">
+              All active jobs <ArrowRight size={17} />
+            </Link>
           </div>
           <JobList items={jobs.slice(0, 5)} showMatch />
         </section>

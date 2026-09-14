@@ -19,7 +19,10 @@ test('title keywords outrank description keywords', () => {
 })
 
 test('non-technical records classify to nothing', () => {
-  assert.deepEqual(classifySkills({ title: 'Ancient Greek Poetry', description: 'A survey of verse.' }), [])
+  assert.deepEqual(
+    classifySkills({ title: 'Ancient Greek Poetry', description: 'A survey of verse.' }),
+    [],
+  )
 })
 
 test('classification is capped at three skills', () => {
@@ -49,7 +52,10 @@ test('normalizeLevel infers from text when the provider states nothing', () => {
 })
 
 test('advanced wins over beginner when both appear', () => {
-  assert.equal(normalizeLevel(null, { title: 'Advanced SQL', description: 'basics recap' }), 'advanced')
+  assert.equal(
+    normalizeLevel(null, { title: 'Advanced SQL', description: 'basics recap' }),
+    'advanced',
+  )
 })
 
 test('stripHtml removes markup and decodes entities', () => {

@@ -11,7 +11,7 @@ services:
       target: dev
     command: npm run dev:api
     environment:
-      PORT: "8787"
+      PORT: '8787'
       # Kept off the bind-mounted source tree and on named volumes, so the
       # database and HTTP cache survive rebuilds without landing in the repo.
       MORROW_DB_PATH: /app/server/data/morrow.db
@@ -25,7 +25,7 @@ services:
       COURSERA_ENABLED: ${COURSERA_ENABLED:-1}
       COURSERA_USE_CATALOG_API: ${COURSERA_USE_CATALOG_API:-1}
     ports:
-      - "127.0.0.1:8787:8787"
+      - '127.0.0.1:8787:8787'
     volumes:
       # Only the sources are mounted: node_modules stays the image's own copy,
       # because better-sqlite3 is compiled for the container, not the host.
@@ -55,7 +55,7 @@ services:
       # Consumed by the `/api` proxy in vite.config.js.
       MORROW_API_URL: http://api:8787
     ports:
-      - "127.0.0.1:5173:5173"
+      - '127.0.0.1:5173:5173'
     volumes:
       - ./src:/app/src
       - ./public:/app/public
@@ -72,7 +72,7 @@ services:
       context: .
       target: web
     ports:
-      - "127.0.0.1:8080:80"
+      - '127.0.0.1:8080:80'
     depends_on:
       api:
         condition: service_healthy

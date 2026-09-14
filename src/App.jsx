@@ -70,7 +70,11 @@ function App() {
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ScrollToTop />
         <AppRoutes />
-        <div className={`toast${message ? ' toast--visible' : ''}`} role="status" aria-live="polite">
+        <div
+          className={`toast${message ? ' toast--visible' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
           {message}
         </div>
       </BrowserRouter>

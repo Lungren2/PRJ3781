@@ -6,7 +6,8 @@ export const host = 'learn.microsoft.com'
 
 // learn.microsoft.com/robots.txt disallows /api/nextsteps/ and /api/attachments/,
 // but not /api/catalog/. No credentials, no key, no grey area.
-const CATALOG_URL = 'https://learn.microsoft.com/api/catalog/?locale=en-us&type=certifications,learningPaths'
+const CATALOG_URL =
+  'https://learn.microsoft.com/api/catalog/?locale=en-us&type=certifications,learningPaths'
 
 export function enabled() {
   return true
@@ -34,7 +35,9 @@ function toRecord(entry, { type, tags, level }) {
     description,
     type,
     level: normalizeLevel(level, { title, description }),
-    duration: entry.duration_in_minutes ? `${Math.round(entry.duration_in_minutes / 60)} hours` : null,
+    duration: entry.duration_in_minutes
+      ? `${Math.round(entry.duration_in_minutes / 60)} hours`
+      : null,
     format: 'Online',
     imageUrl: entry.icon_url ?? null,
     skills,

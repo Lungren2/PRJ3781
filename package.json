@@ -1,7 +1,10 @@
 {
   "name": "morrow-frontend",
-  "private": true,
   "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "server"
+  ],
   "type": "module",
   "scripts": {
     "dev": "vite --host",
@@ -11,6 +14,8 @@
     "start:api": "npm --workspace @morrow/server run start",
     "crawl": "npm --workspace @morrow/server run crawl --",
     "crawl:export": "npm --workspace @morrow/server run export",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
     "test:server": "npm --workspace @morrow/server run test"
   },
   "dependencies": {
@@ -22,9 +27,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
+    "oxfmt": "^0.67.0",
     "vite": "^6.0.5"
-  },
-  "workspaces": [
-    "server"
-  ]
+  }
 }

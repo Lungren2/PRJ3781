@@ -22,7 +22,9 @@ export function enabled() {
   const settings = config.providers.coursera
   if (!settings.enabled) return false
   if (!settings.useCatalogApi) {
-    console.warn('[coursera] COURSERA_USE_CATALOG_API=0 — skipping provider (strict robots posture)')
+    console.warn(
+      '[coursera] COURSERA_USE_CATALOG_API=0 — skipping provider (strict robots posture)',
+    )
     return false
   }
   return true
@@ -51,7 +53,9 @@ function toRecord(entry) {
   if (languages.length > 0 && !languages.some((lang) => String(lang).startsWith('en'))) return null
   if (!entry.slug || !entry.name) return null
 
-  const tags = (entry.domainTypes ?? []).flatMap((domain) => [domain.domainId, domain.subdomainId]).filter(Boolean)
+  const tags = (entry.domainTypes ?? [])
+    .flatMap((domain) => [domain.domainId, domain.subdomainId])
+    .filter(Boolean)
   const description = truncate(entry.description ?? '')
   const skills = classifySkills({ title: entry.name, description, tags })
   // Coursera's catalogue is 23k records wide and mostly not technical. Anything that
@@ -79,7 +83,10 @@ function toRecord(entry) {
  * Paginated. The cursor is persisted so a run truncated by a budget resumes where it
  * stopped instead of re-walking the catalogue from the beginning.
  */
-export async function* crawl(ctx, { maxPages = config.crawl.maxPagesPerProvider, resume = true } = {}) {
+export async function* crawl(
+  ctx,
+  { maxPages = config.crawl.maxPagesPerProvider, resume = true } = {},
+) {
   const pageSize = config.providers.coursera.pageSize
   let start = resume ? Number(getCursor(id) ?? 0) : 0
   let pages = 0

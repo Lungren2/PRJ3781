@@ -11,7 +11,9 @@ function cacheIsFresh(fetchedAt) {
 
 async function loadRobots(host) {
   const db = getDb()
-  const row = db.prepare('SELECT body, status, fetched_at FROM robots_cache WHERE host = ?').get(host)
+  const row = db
+    .prepare('SELECT body, status, fetched_at FROM robots_cache WHERE host = ?')
+    .get(host)
   if (row && cacheIsFresh(row.fetched_at)) return row
 
   const url = `https://${host}/robots.txt`

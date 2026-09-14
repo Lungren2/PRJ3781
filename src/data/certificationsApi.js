@@ -62,7 +62,10 @@ function toQuery(filters) {
   return params.toString()
 }
 
-export async function fetchCertifications({ skill, type, level, q, page = 1, pageSize = 24 } = {}, signal) {
+export async function fetchCertifications(
+  { skill, type, level, q, page = 1, pageSize = 24 } = {},
+  signal,
+) {
   const filters = { skill, type, level, q, page, pageSize }
 
   try {
@@ -96,7 +99,10 @@ export async function fetchCertifications({ skill, type, level, q, page = 1, pag
  */
 export async function fetchFacets({ skill, type, level, q } = {}, signal) {
   try {
-    const response = await fetch(`${API_BASE}/certifications/facets?${toQuery({ skill, type, level, q })}`, { signal })
+    const response = await fetch(
+      `${API_BASE}/certifications/facets?${toQuery({ skill, type, level, q })}`,
+      { signal },
+    )
     if (!response.ok) throw new Error(`api ${response.status}`)
     return { ...(await response.json()), source: SOURCE.live }
   } catch (error) {

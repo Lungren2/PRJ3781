@@ -53,7 +53,9 @@ export function createCrawlContext({ offline = false, verbose = true } = {}) {
   const robotsChecked = new Set()
   const startedAt = Date.now()
 
-  const log = (...args) => { if (verbose) console.log(...args) }
+  const log = (...args) => {
+    if (verbose) console.log(...args)
+  }
 
   function assertBudget() {
     if (stats.requests >= config.crawl.maxRequestsPerRun) {
@@ -70,7 +72,9 @@ export function createCrawlContext({ offline = false, verbose = true } = {}) {
     failures.set(host, count)
     if (count >= config.crawl.hostFailureLimit) {
       cooled.add(host)
-      console.warn(`[crawl] cooling off ${host} for the rest of this run after ${count} consecutive failures`)
+      console.warn(
+        `[crawl] cooling off ${host} for the rest of this run after ${count} consecutive failures`,
+      )
     }
   }
 
@@ -153,11 +157,14 @@ export function createCrawlContext({ offline = false, verbose = true } = {}) {
 
         if (RETRYABLE.has(response.status)) {
           const retryAfter = Number(response.headers.get('retry-after'))
-          const wait = Number.isFinite(retryAfter) && retryAfter > 0
-            ? retryAfter * 1000
-            : backoffDelay(attempt)
+          const wait =
+            Number.isFinite(retryAfter) && retryAfter > 0
+              ? retryAfter * 1000
+              : backoffDelay(attempt)
           noteFailure(host)
-          console.warn(`[crawl] ${response.status} on ${url}; backing off ${wait}ms (attempt ${attempt + 1})`)
+          console.warn(
+            `[crawl] ${response.status} on ${url}; backing off ${wait}ms (attempt ${attempt + 1})`,
+          )
           release()
           stats.retries += 1
           await sleep(wait)

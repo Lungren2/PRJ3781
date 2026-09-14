@@ -20,13 +20,16 @@ export const config = {
   port: num(process.env.PORT, 8787),
   dbPath: process.env.MORROW_DB_PATH || path.join(SERVER_ROOT, 'data', 'morrow.db'),
   cacheDir: process.env.MORROW_CACHE_DIR || path.join(SERVER_ROOT, '.cache', 'http'),
-  snapshotPath: process.env.MORROW_SNAPSHOT_PATH || path.join(REPO_ROOT, 'public', 'data', 'certifications.json'),
+  snapshotPath:
+    process.env.MORROW_SNAPSHOT_PATH ||
+    path.join(REPO_ROOT, 'public', 'data', 'certifications.json'),
 
   // A crawler should say who it is and how to reach its operator. We never spoof a
   // browser user-agent, rotate identities, or route through proxies: if a provider
   // does not want MorrowBot, the correct response is to stop, not to disguise it.
-  userAgent: process.env.MORROW_USER_AGENT
-    || 'MorrowBot/0.1 (+https://morrow.example/about-crawler; contact@morrow.example)',
+  userAgent:
+    process.env.MORROW_USER_AGENT ||
+    'MorrowBot/0.1 (+https://morrow.example/about-crawler; contact@morrow.example)',
   // The token matched against `User-agent:` lines in robots.txt.
   robotsAgent: process.env.MORROW_ROBOTS_AGENT || 'MorrowBot',
 

@@ -30,18 +30,18 @@ Docker section of the [root README](../README.md).
 The providers here can and will block an impolite client, so politeness is enforced
 centrally in `src/http/fetcher.js` rather than left to each adapter.
 
-| Guarantee | Where | Default |
-|---|---|---|
-| robots.txt checked before **every** request | `src/http/robots.js` | 5xx or unreachable robots.txt means *do not crawl* |
-| `Crawl-delay` honoured when longer than ours | `src/http/limiter.js` | — |
-| Minimum interval between requests, per host | `src/http/limiter.js` | 2000 ms |
-| Max concurrent requests, per host | `src/http/limiter.js` | 2 |
-| Fresh cache serves without any request | `src/http/cache.js` | honours `Cache-Control: max-age` |
-| Conditional requests (`ETag` / `Last-Modified`) | `src/http/fetcher.js` | always sent when known |
-| Exponential backoff with full jitter on 429/5xx | `src/http/fetcher.js` | 3 retries, honours `Retry-After` |
-| Circuit breaker per host | `src/http/fetcher.js` | 3 consecutive failures cools the host off |
-| Run budgets | `src/config.js` | 400 requests, 250 pages/provider, 20 minutes |
-| Identifying User-Agent with contact URL | `src/config.js` | `MorrowBot/0.1 (+…)` |
+| Guarantee                                       | Where                 | Default                                            |
+| ----------------------------------------------- | --------------------- | -------------------------------------------------- |
+| robots.txt checked before **every** request     | `src/http/robots.js`  | 5xx or unreachable robots.txt means _do not crawl_ |
+| `Crawl-delay` honoured when longer than ours    | `src/http/limiter.js` | —                                                  |
+| Minimum interval between requests, per host     | `src/http/limiter.js` | 2000 ms                                            |
+| Max concurrent requests, per host               | `src/http/limiter.js` | 2                                                  |
+| Fresh cache serves without any request          | `src/http/cache.js`   | honours `Cache-Control: max-age`                   |
+| Conditional requests (`ETag` / `Last-Modified`) | `src/http/fetcher.js` | always sent when known                             |
+| Exponential backoff with full jitter on 429/5xx | `src/http/fetcher.js` | 3 retries, honours `Retry-After`                   |
+| Circuit breaker per host                        | `src/http/fetcher.js` | 3 consecutive failures cools the host off          |
+| Run budgets                                     | `src/config.js`       | 400 requests, 250 pages/provider, 20 minutes       |
+| Identifying User-Agent with contact URL         | `src/config.js`       | `MorrowBot/0.1 (+…)`                               |
 
 Deliberately **not** implemented, and not to be added later: browser user-agent
 spoofing, user-agent rotation, proxy pools, and CAPTCHA solving. If a provider does
@@ -107,23 +107,23 @@ per-user saved certifications.
 
 ## API
 
-| Endpoint | Purpose |
-|---|---|
-| `GET /api/certifications?skill=&type=&level=&q=&page=&pageSize=` | Filtered, paginated listings |
-| `GET /api/certifications/facets` | The three vocabularies with live result counts |
-| `GET /api/health` | Last successful crawl per provider and record counts |
+| Endpoint                                                         | Purpose                                              |
+| ---------------------------------------------------------------- | ---------------------------------------------------- |
+| `GET /api/certifications?skill=&type=&level=&q=&page=&pageSize=` | Filtered, paginated listings                         |
+| `GET /api/certifications/facets`                                 | The three vocabularies with live result counts       |
+| `GET /api/health`                                                | Last successful crawl per provider and record counts |
 
 ## Configuration
 
 All optional; the defaults above apply when unset.
 
-| Variable | Purpose |
-|---|---|
-| `PORT` | API port (default 8787) |
-| `MORROW_USER_AGENT` | Crawler identity — **set this to a real contact URL before deploying** |
-| `MORROW_MIN_REQUEST_INTERVAL_MS` | Per-host request spacing |
-| `MORROW_MAX_REQUESTS_PER_RUN`, `MORROW_MAX_RUN_MINUTES`, `MORROW_MAX_PAGES_PER_PROVIDER` | Run budgets |
-| `MORROW_CRAWL_SCHEDULE_ENABLED`, `MORROW_CRAWL_CRON`, `MORROW_CRAWL_TZ` | Daily scheduled crawl |
-| `MORROW_CORS_ORIGINS` | Comma-separated allowed origins |
-| `COURSERA_USE_CATALOG_API` | `0` for a strict robots posture |
-| `MICROSOFT_LEARN_ENABLED`, `COURSERA_ENABLED` | Per-provider on/off |
+| Variable                                                                                 | Purpose                                                                |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `PORT`                                                                                   | API port (default 8787)                                                |
+| `MORROW_USER_AGENT`                                                                      | Crawler identity — **set this to a real contact URL before deploying** |
+| `MORROW_MIN_REQUEST_INTERVAL_MS`                                                         | Per-host request spacing                                               |
+| `MORROW_MAX_REQUESTS_PER_RUN`, `MORROW_MAX_RUN_MINUTES`, `MORROW_MAX_PAGES_PER_PROVIDER` | Run budgets                                                            |
+| `MORROW_CRAWL_SCHEDULE_ENABLED`, `MORROW_CRAWL_CRON`, `MORROW_CRAWL_TZ`                  | Daily scheduled crawl                                                  |
+| `MORROW_CORS_ORIGINS`                                                                    | Comma-separated allowed origins                                        |
+| `COURSERA_USE_CATALOG_API`                                                               | `0` for a strict robots posture                                        |
+| `MICROSOFT_LEARN_ENABLED`, `COURSERA_ENABLED`                                            | Per-provider on/off                                                    |

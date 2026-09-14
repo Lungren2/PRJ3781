@@ -11,7 +11,13 @@ import {
   UploadCloud,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { PageIntro, PreviewNotice, ProgressBar, RouteList, StatusPill } from '../components/ProductUI.jsx'
+import {
+  PageIntro,
+  PreviewNotice,
+  ProgressBar,
+  RouteList,
+  StatusPill,
+} from '../components/ProductUI.jsx'
 import { useToast } from '../components/ToastContext.jsx'
 
 const candidateRoutes = [
@@ -54,7 +60,9 @@ export function CandidateHubPage() {
         copy="A focused workspace for finding opportunities, showing what you can do, and building useful experience."
         tone="sage"
       >
-        <Link className="button button--dark" to="/jobs">Browse active jobs</Link>
+        <Link className="button button--dark" to="/jobs">
+          Browse active jobs
+        </Link>
       </PageIntro>
 
       <div className="page-container">
@@ -62,7 +70,10 @@ export function CandidateHubPage() {
         <section className="candidate-dashboard" aria-labelledby="candidate-next-title">
           <div className="candidate-dashboard__main">
             <div className="content-heading">
-              <div><p className="eyebrow">Your workspace</p><h2 id="candidate-next-title">Choose your next step</h2></div>
+              <div>
+                <p className="eyebrow">Your workspace</p>
+                <h2 id="candidate-next-title">Choose your next step</h2>
+              </div>
               <StatusPill tone="coral">Preview profile</StatusPill>
             </div>
             <RouteList items={candidateRoutes} />
@@ -71,9 +82,30 @@ export function CandidateHubPage() {
             <p className="eyebrow">Browse by path</p>
             <h2 id="browse-path-title">What are you looking for?</h2>
             <nav>
-              <Link to="/jobs/part-time"><BriefcaseBusiness size={19} aria-hidden="true" /><span><strong>Part-time work</strong><small>Flexible work alongside studies</small></span><ArrowRight size={17} /></Link>
-              <Link to="/jobs/internships"><GraduationCap size={19} aria-hidden="true" /><span><strong>Internships</strong><small>Structured early experience</small></span><ArrowRight size={17} /></Link>
-              <Link to="/jobs/entry-level"><Sparkles size={19} aria-hidden="true" /><span><strong>Entry-level jobs</strong><small>Your first full-time role</small></span><ArrowRight size={17} /></Link>
+              <Link to="/jobs/part-time">
+                <BriefcaseBusiness size={19} aria-hidden="true" />
+                <span>
+                  <strong>Part-time work</strong>
+                  <small>Flexible work alongside studies</small>
+                </span>
+                <ArrowRight size={17} />
+              </Link>
+              <Link to="/jobs/internships">
+                <GraduationCap size={19} aria-hidden="true" />
+                <span>
+                  <strong>Internships</strong>
+                  <small>Structured early experience</small>
+                </span>
+                <ArrowRight size={17} />
+              </Link>
+              <Link to="/jobs/entry-level">
+                <Sparkles size={19} aria-hidden="true" />
+                <span>
+                  <strong>Entry-level jobs</strong>
+                  <small>Your first full-time role</small>
+                </span>
+                <ArrowRight size={17} />
+              </Link>
             </nav>
           </aside>
         </section>
@@ -108,9 +140,27 @@ export function ResumePage() {
           <p className="eyebrow">Setup progress</p>
           <ProgressBar value={fileName ? 50 : 20} label="Profile readiness" />
           <ol>
-            <li className="is-current"><span>1</span><div><strong>Resume</strong><small>Select a local file</small></div></li>
-            <li><span>2</span><div><strong>Quick questions</strong><small>Add preferences</small></div></li>
-            <li><span>3</span><div><strong>Review</strong><small>Preview your profile</small></div></li>
+            <li className="is-current">
+              <span>1</span>
+              <div>
+                <strong>Resume</strong>
+                <small>Select a local file</small>
+              </div>
+            </li>
+            <li>
+              <span>2</span>
+              <div>
+                <strong>Quick questions</strong>
+                <small>Add preferences</small>
+              </div>
+            </li>
+            <li>
+              <span>3</span>
+              <div>
+                <strong>Review</strong>
+                <small>Preview your profile</small>
+              </div>
+            </li>
           </ol>
         </aside>
 
@@ -121,12 +171,25 @@ export function ResumePage() {
             toast('Resume profile draft saved for this preview. No data was sent.')
           }}
         >
-          <PreviewNotice>Files and answers stay in this browser preview and are not sent to a server.</PreviewNotice>
+          <PreviewNotice>
+            Files and answers stay in this browser preview and are not sent to a server.
+          </PreviewNotice>
           <section aria-labelledby="resume-upload-title">
-            <div className="form-section-heading"><span className="step-icon"><UploadCloud size={20} /></span><div><p>Step 1</p><h2 id="resume-upload-title">Add your resume</h2></div></div>
+            <div className="form-section-heading">
+              <span className="step-icon">
+                <UploadCloud size={20} />
+              </span>
+              <div>
+                <p>Step 1</p>
+                <h2 id="resume-upload-title">Add your resume</h2>
+              </div>
+            </div>
             <div
               className={`drop-zone${dragActive ? ' drop-zone--active' : ''}${fileName ? ' drop-zone--selected' : ''}`}
-              onDragEnter={(event) => { event.preventDefault(); setDragActive(true) }}
+              onDragEnter={(event) => {
+                event.preventDefault()
+                setDragActive(true)
+              }}
               onDragOver={(event) => event.preventDefault()}
               onDragLeave={() => setDragActive(false)}
               onDrop={(event) => {
@@ -135,10 +198,20 @@ export function ResumePage() {
                 setLocalFile(event.dataTransfer.files[0])
               }}
             >
-              {fileName ? <Check size={28} aria-hidden="true" /> : <UploadCloud size={28} aria-hidden="true" />}
+              {fileName ? (
+                <Check size={28} aria-hidden="true" />
+              ) : (
+                <UploadCloud size={28} aria-hidden="true" />
+              )}
               <h3>{fileName || 'Drag and drop your resume here'}</h3>
-              <p>{fileName ? 'Selected locally - not uploaded' : 'PDF or DOCX, up to 10MB in the future experience'}</p>
-              <label className="button button--outline" htmlFor="resume-file">{fileName ? 'Choose another file' : 'Choose a file'}</label>
+              <p>
+                {fileName
+                  ? 'Selected locally - not uploaded'
+                  : 'PDF or DOCX, up to 10MB in the future experience'}
+              </p>
+              <label className="button button--outline" htmlFor="resume-file">
+                {fileName ? 'Choose another file' : 'Choose a file'}
+              </label>
               <input
                 className="sr-only"
                 id="resume-file"
@@ -150,20 +223,70 @@ export function ResumePage() {
           </section>
 
           <section aria-labelledby="quick-questions-title">
-            <div className="form-section-heading"><span className="step-icon"><FileQuestion size={20} /></span><div><p>Step 2</p><h2 id="quick-questions-title">Answer a few quick questions</h2></div></div>
+            <div className="form-section-heading">
+              <span className="step-icon">
+                <FileQuestion size={20} />
+              </span>
+              <div>
+                <p>Step 2</p>
+                <h2 id="quick-questions-title">Answer a few quick questions</h2>
+              </div>
+            </div>
             <div className="form-grid">
-              <label className="form-field"><span>Current study level</span><select defaultValue=""><option value="" disabled>Select a level</option><option>Undergraduate</option><option>Postgraduate</option><option>Recent graduate</option></select></label>
-              <label className="form-field"><span>Institution</span><input type="text" placeholder="Your university or college" /></label>
-              <label className="form-field"><span>Field of study</span><input type="text" placeholder="e.g. Information Systems" /></label>
-              <label className="form-field"><span>Graduation year</span><select defaultValue=""><option value="" disabled>Select a year</option><option>2026</option><option>2027</option><option>2028</option><option>Already graduated</option></select></label>
-              <label className="form-field form-field--wide"><span>What roles interest you?</span><input type="text" placeholder="e.g. product design, data, marketing" /></label>
-              <label className="form-field form-field--wide"><span>Preferred work setup</span><select defaultValue="Flexible"><option>Flexible</option><option>On-site</option><option>Hybrid</option><option>Remote</option></select></label>
+              <label className="form-field">
+                <span>Current study level</span>
+                <select defaultValue="">
+                  <option value="" disabled>
+                    Select a level
+                  </option>
+                  <option>Undergraduate</option>
+                  <option>Postgraduate</option>
+                  <option>Recent graduate</option>
+                </select>
+              </label>
+              <label className="form-field">
+                <span>Institution</span>
+                <input type="text" placeholder="Your university or college" />
+              </label>
+              <label className="form-field">
+                <span>Field of study</span>
+                <input type="text" placeholder="e.g. Information Systems" />
+              </label>
+              <label className="form-field">
+                <span>Graduation year</span>
+                <select defaultValue="">
+                  <option value="" disabled>
+                    Select a year
+                  </option>
+                  <option>2026</option>
+                  <option>2027</option>
+                  <option>2028</option>
+                  <option>Already graduated</option>
+                </select>
+              </label>
+              <label className="form-field form-field--wide">
+                <span>What roles interest you?</span>
+                <input type="text" placeholder="e.g. product design, data, marketing" />
+              </label>
+              <label className="form-field form-field--wide">
+                <span>Preferred work setup</span>
+                <select defaultValue="Flexible">
+                  <option>Flexible</option>
+                  <option>On-site</option>
+                  <option>Hybrid</option>
+                  <option>Remote</option>
+                </select>
+              </label>
             </div>
           </section>
 
           <div className="form-actions">
-            <Link className="button button--outline" to="/candidates">Back to candidate home</Link>
-            <button className="button button--dark" type="submit">Save preview draft</button>
+            <Link className="button button--outline" to="/candidates">
+              Back to candidate home
+            </Link>
+            <button className="button button--dark" type="submit">
+              Save preview draft
+            </button>
           </div>
         </form>
       </div>
