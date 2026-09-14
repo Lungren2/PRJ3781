@@ -3192,6 +3192,19 @@ p {
   border-left: 0.0625rem solid var(--color-line);
 }
 
+.account-summary {
+  align-items: center;
+  color: var(--color-ink);
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 700;
+  gap: 0.4rem;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @keyframes nav-pop {
   from {
     opacity: 0;

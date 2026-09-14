@@ -13,8 +13,9 @@ import {
   PortfolioBuilderPage,
   ProjectsPage,
 } from './pages/DiscoveryPages.jsx'
-import { AuthPage, NotFoundPage } from './pages/UtilityPages.jsx'
+import { AccessDeniedPage, AuthPage, NotFoundPage } from './pages/UtilityPages.jsx'
 import { ToastContext } from './components/ToastContext.jsx'
+import { AuthProvider, RequireCandidate, RequireEmployer } from './components/AuthContext.jsx'
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -32,15 +33,15 @@ function AppRoutes() {
       <Route element={<SiteLayout />}>
         <Route index element={<HomePage />} />
         <Route path="candidates" element={<CandidateHubPage />} />
-        <Route path="candidates/resume" element={<ResumePage />} />
+        <Route path="candidates/resume" element={<RequireCandidate><ResumePage /></RequireCandidate>} />
         <Route path="jobs" element={<JobsPage />} />
         <Route path="jobs/part-time" element={<JobsPage preset="Part-time" />} />
         <Route path="jobs/internships" element={<JobsPage preset="Internship" />} />
         <Route path="jobs/entry-level" element={<JobsPage preset="Entry level" />} />
-        <Route path="jobs/recommended" element={<RecommendedJobsPage />} />
+        <Route path="jobs/recommended" element={<RequireCandidate><RecommendedJobsPage /></RequireCandidate>} />
         <Route path="employers" element={<EmployerHubPage />} />
-        <Route path="employers/candidates" element={<BrowseCandidatesPage />} />
-        <Route path="employers/post-job" element={<PostJobPage />} />
+        <Route path="employers/candidates" element={<RequireEmployer><BrowseCandidatesPage /></RequireEmployer>} />
+        <Route path="employers/post-job" element={<RequireEmployer><PostJobPage /></RequireEmployer>} />
         <Route path="courses" element={<CoursesPage />} />
         <Route path="discover/jobs" element={<JobCrawlerPage />} />
         <Route path="discover/hackathons" element={<HackathonsPage />} />
@@ -48,6 +49,7 @@ function AppRoutes() {
         <Route path="portfolio-builder" element={<PortfolioBuilderPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="auth" element={<AuthPage />} />
+        <Route path="forbidden" element={<AccessDeniedPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
@@ -67,13 +69,15 @@ function App() {
 
   return (
     <ToastContext.Provider value={toastValue}>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <ScrollToTop />
-        <AppRoutes />
-        <div className={`toast${message ? ' toast--visible' : ''}`} role="status" aria-live="polite">
-          {message}
-        </div>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+          <ScrollToTop />
+          <AppRoutes />
+          <div className={`toast${message ? ' toast--visible' : ''}`} role="status" aria-live="polite">
+            {message}
+          </div>
+        </BrowserRouter>
+      </AuthProvider>
     </ToastContext.Provider>
   )
 }

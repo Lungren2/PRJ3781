@@ -125,5 +125,36 @@ All optional; the defaults above apply when unset.
 | `MORROW_MAX_REQUESTS_PER_RUN`, `MORROW_MAX_RUN_MINUTES`, `MORROW_MAX_PAGES_PER_PROVIDER` | Run budgets |
 | `MORROW_CRAWL_SCHEDULE_ENABLED`, `MORROW_CRAWL_CRON`, `MORROW_CRAWL_TZ` | Daily scheduled crawl |
 | `MORROW_CORS_ORIGINS` | Comma-separated allowed origins |
+| `MORROW_DEMO_AUTH_ENABLED` | Seed and permit local candidate/employer demo login (default `1`) |
+| `MORROW_SESSION_TTL_HOURS` | Opaque login-session lifetime (default `8`) |
+| `MORROW_LOGIN_WINDOW_MINUTES` | In-memory login-rate-limit window (default `15`) |
+| `MORROW_LOGIN_MAX_ATTEMPTS` | Attempts per IP and identity per window (default `8`) |
+| `ENTRA_ENABLED` | Enable the Entra OIDC provider only when fully configured (default `0`) |
+| `ENTRA_TENANT_ID`, `ENTRA_CLIENT_ID`, `ENTRA_CLIENT_SECRET`, `ENTRA_REDIRECT_URI` | Exact-tenant Entra app registration |
+| `ENTRA_TRANSACTION_TTL_MINUTES` | State/nonce/PKCE transaction lifetime (default `10`) |
 | `COURSERA_USE_CATALOG_API` | `0` for a strict robots posture |
 | `MICROSOFT_LEARN_ENABLED`, `COURSERA_ENABLED` | Per-provider on/off |
+
+## Demo authentication API
+
+The service keeps public catalogue routes unauthenticated and provides a small,
+provider-neutral account surface:
+
+- `GET /api/auth/providers`, `GET /api/auth/me`
+- `POST /api/auth/login`, `POST /api/auth/demo-login`, `POST /api/auth/logout`
+- `GET /api/auth/entra/login`, `GET /api/auth/entra/callback`
+- `GET`/`PUT /api/candidate/resume`
+- `GET /api/organizations/:organizationId/candidates`
+- `POST /api/organizations/:organizationId/jobs`
+- `PATCH /api/organizations/:organizationId/jobs/:jobId`
+
+Authenticated mutations require the session's `x-csrf-token`. Organization
+access is derived from membership rows rather than a global user role.
+
+The optional Entra provider uses MSAL Node's authorization-code flow with PKCE.
+OIDC state, nonce, verifier, return path, and a browser binding are short-lived
+SQLite records consumed exactly once. Validated identities are keyed by immutable
+issuer/subject and tenant/object claims; email is display/contact data only. Entra
+tokens are neither returned to the browser nor persisted. Set `ENTRA_ENABLED=1`
+only after supplying the exact-tenant app-registration values documented in the
+root `.env.example`; incomplete or broad multi-tenant configuration fails startup.

@@ -13,6 +13,7 @@ import {
 import { Link } from 'react-router-dom'
 import { PageIntro, PreviewNotice, ProgressBar, RouteList, StatusPill } from '../components/ProductUI.jsx'
 import { useToast } from '../components/ToastContext.jsx'
+import { useAuth } from '../components/AuthContext.jsx'
 
 const candidateRoutes = [
   {
@@ -86,6 +87,7 @@ export function ResumePage() {
   const [fileName, setFileName] = useState('')
   const [dragActive, setDragActive] = useState(false)
   const toast = useToast()
+  const { apiFetch } = useAuth()
 
   const setLocalFile = (file) => {
     if (!file) return
@@ -116,12 +118,22 @@ export function ResumePage() {
 
         <form
           className="resume-form form-surface"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault()
-            toast('Resume profile draft saved for this preview. No data was sent.')
+            const values = Object.fromEntries(new FormData(event.currentTarget))
+            delete values.resume
+            try {
+              await apiFetch('/api/candidate/resume', {
+                method: 'PUT',
+                body: JSON.stringify({ draft: { ...values, fileName } }),
+              })
+              toast('Resume profile draft saved to your demo account.')
+            } catch (error) {
+              toast(`Could not save resume draft: ${error.message}`)
+            }
           }}
         >
-          <PreviewNotice>Files and answers stay in this browser preview and are not sent to a server.</PreviewNotice>
+          <PreviewNotice>The selected file stays in the browser. Its filename and your answers are saved to your local demo account.</PreviewNotice>
           <section aria-labelledby="resume-upload-title">
             <div className="form-section-heading"><span className="step-icon"><UploadCloud size={20} /></span><div><p>Step 1</p><h2 id="resume-upload-title">Add your resume</h2></div></div>
             <div
@@ -142,6 +154,7 @@ export function ResumePage() {
               <input
                 className="sr-only"
                 id="resume-file"
+                name="resume"
                 type="file"
                 accept=".pdf,.doc,.docx"
                 onChange={(event) => setLocalFile(event.target.files[0])}
@@ -152,12 +165,12 @@ export function ResumePage() {
           <section aria-labelledby="quick-questions-title">
             <div className="form-section-heading"><span className="step-icon"><FileQuestion size={20} /></span><div><p>Step 2</p><h2 id="quick-questions-title">Answer a few quick questions</h2></div></div>
             <div className="form-grid">
-              <label className="form-field"><span>Current study level</span><select defaultValue=""><option value="" disabled>Select a level</option><option>Undergraduate</option><option>Postgraduate</option><option>Recent graduate</option></select></label>
-              <label className="form-field"><span>Institution</span><input type="text" placeholder="Your university or college" /></label>
-              <label className="form-field"><span>Field of study</span><input type="text" placeholder="e.g. Information Systems" /></label>
-              <label className="form-field"><span>Graduation year</span><select defaultValue=""><option value="" disabled>Select a year</option><option>2026</option><option>2027</option><option>2028</option><option>Already graduated</option></select></label>
-              <label className="form-field form-field--wide"><span>What roles interest you?</span><input type="text" placeholder="e.g. product design, data, marketing" /></label>
-              <label className="form-field form-field--wide"><span>Preferred work setup</span><select defaultValue="Flexible"><option>Flexible</option><option>On-site</option><option>Hybrid</option><option>Remote</option></select></label>
+              <label className="form-field"><span>Current study level</span><select name="studyLevel" defaultValue=""><option value="" disabled>Select a level</option><option>Undergraduate</option><option>Postgraduate</option><option>Recent graduate</option></select></label>
+              <label className="form-field"><span>Institution</span><input name="institution" type="text" placeholder="Your university or college" /></label>
+              <label className="form-field"><span>Field of study</span><input name="fieldOfStudy" type="text" placeholder="e.g. Information Systems" /></label>
+              <label className="form-field"><span>Graduation year</span><select name="graduationYear" defaultValue=""><option value="" disabled>Select a year</option><option>2026</option><option>2027</option><option>2028</option><option>Already graduated</option></select></label>
+              <label className="form-field form-field--wide"><span>What roles interest you?</span><input name="roles" type="text" placeholder="e.g. product design, data, marketing" /></label>
+              <label className="form-field form-field--wide"><span>Preferred work setup</span><select name="workSetup" defaultValue="Flexible"><option>Flexible</option><option>On-site</option><option>Hybrid</option><option>Remote</option></select></label>
             </div>
           </section>
 

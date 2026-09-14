@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom'
 import { PageIntro, PreviewNotice, SkillTags, StatusPill } from '../components/ProductUI.jsx'
 import { candidates } from '../data/mockData.js'
 import { useToast } from '../components/ToastContext.jsx'
+import { useAuth } from '../components/AuthContext.jsx'
 
 const employerServices = [
   {
@@ -116,28 +117,42 @@ export function PostJobPage() {
   const [type, setType] = useState('Internship')
   const [location, setLocation] = useState('')
   const toast = useToast()
+  const { user, apiFetch } = useAuth()
+  const organization = user.organizations[0]
 
   return (
     <main id="main-content" className="product-page">
       <PageIntro eyebrow="Employer workspace" title="Post a job" copy="Shape a clear early-career role and preview how it will appear to candidates." tone="sage"><StatusPill tone="blue">Draft mode</StatusPill></PageIntro>
       <div className="page-container job-post-layout">
-        <form className="form-surface job-post-form" onSubmit={(event) => { event.preventDefault(); toast('Job draft saved locally for this frontend preview.') }}>
-          <PreviewNotice>No listing will be published and no information is sent.</PreviewNotice>
+        <form className="form-surface job-post-form" onSubmit={async (event) => {
+          event.preventDefault()
+          const draft = Object.fromEntries(new FormData(event.currentTarget))
+          try {
+            await apiFetch(`/api/organizations/${organization.id}/jobs`, {
+              method: 'POST',
+              body: JSON.stringify({ draft }),
+            })
+            toast('Job draft saved to your organization workspace. It was not published.')
+          } catch (error) {
+            toast(`Could not save job draft: ${error.message}`)
+          }
+        }}>
+          <PreviewNotice>The draft is saved to your demo organization. No listing will be published.</PreviewNotice>
           <section aria-labelledby="role-basics-title">
             <div className="form-section-heading"><span className="step-icon"><BriefcaseBusiness size={20} /></span><div><p>Step 1</p><h2 id="role-basics-title">Role basics</h2></div></div>
             <div className="form-grid">
-              <label className="form-field form-field--wide"><span>Job title</span><input required type="text" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Junior Data Analyst" /></label>
-              <label className="form-field"><span>Opportunity type</span><select value={type} onChange={(event) => setType(event.target.value)}><option>Internship</option><option>Part-time</option><option>Entry level</option><option>Graduate programme</option></select></label>
-              <label className="form-field"><span>Location</span><input required type="text" value={location} onChange={(event) => setLocation(event.target.value)} placeholder="City or remote" /></label>
-              <label className="form-field"><span>Work setup</span><select defaultValue="Hybrid"><option>On-site</option><option>Hybrid</option><option>Remote</option></select></label>
-              <label className="form-field"><span>Pay or stipend</span><input type="text" placeholder="e.g. R9 000 / month" /></label>
+              <label className="form-field form-field--wide"><span>Job title</span><input name="title" required type="text" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="e.g. Junior Data Analyst" /></label>
+              <label className="form-field"><span>Opportunity type</span><select name="type" value={type} onChange={(event) => setType(event.target.value)}><option>Internship</option><option>Part-time</option><option>Entry level</option><option>Graduate programme</option></select></label>
+              <label className="form-field"><span>Location</span><input name="location" required type="text" value={location} onChange={(event) => setLocation(event.target.value)} placeholder="City or remote" /></label>
+              <label className="form-field"><span>Work setup</span><select name="workSetup" defaultValue="Hybrid"><option>On-site</option><option>Hybrid</option><option>Remote</option></select></label>
+              <label className="form-field"><span>Pay or stipend</span><input name="pay" type="text" placeholder="e.g. R9 000 / month" /></label>
             </div>
           </section>
           <section aria-labelledby="role-detail-title">
             <div className="form-section-heading"><span className="step-icon"><Sparkles size={20} /></span><div><p>Step 2</p><h2 id="role-detail-title">Role details</h2></div></div>
             <div className="form-grid">
-              <label className="form-field form-field--wide"><span>What will this person work on?</span><textarea rows="6" placeholder="Describe the work, team, and a typical first project." /></label>
-              <label className="form-field form-field--wide"><span>Useful skills</span><input type="text" placeholder="e.g. Excel, SQL, clear communication" /></label>
+              <label className="form-field form-field--wide"><span>What will this person work on?</span><textarea name="description" rows="6" placeholder="Describe the work, team, and a typical first project." /></label>
+              <label className="form-field form-field--wide"><span>Useful skills</span><input name="skills" type="text" placeholder="e.g. Excel, SQL, clear communication" /></label>
             </div>
           </section>
           <div className="form-actions"><Link className="button button--outline" to="/employers">Cancel preview</Link><button className="button button--dark" type="submit">Save job draft</button></div>

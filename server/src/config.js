@@ -67,6 +67,24 @@ export const config = {
       .filter(Boolean),
   },
 
+  auth: {
+    demoEnabled: bool(process.env.MORROW_DEMO_AUTH_ENABLED, true),
+    sessionTtlHours: num(process.env.MORROW_SESSION_TTL_HOURS, 8),
+    secureCookies: process.env.NODE_ENV === 'production',
+    loginWindowMinutes: num(process.env.MORROW_LOGIN_WINDOW_MINUTES, 15),
+    loginMaxAttempts: num(process.env.MORROW_LOGIN_MAX_ATTEMPTS, 8),
+    // Reserved configuration seam for the future Entra OIDC provider. Enabling
+    // it is rejected until the provider adapter is implemented and configured.
+    entra: {
+      enabled: bool(process.env.ENTRA_ENABLED, false),
+      tenantId: process.env.ENTRA_TENANT_ID || '',
+      clientId: process.env.ENTRA_CLIENT_ID || '',
+      clientSecret: process.env.ENTRA_CLIENT_SECRET || '',
+      redirectUri: process.env.ENTRA_REDIRECT_URI || '',
+      transactionTtlMinutes: num(process.env.ENTRA_TRANSACTION_TTL_MINUTES, 10),
+    },
+  },
+
   schedule: {
     enabled: bool(process.env.MORROW_CRAWL_SCHEDULE_ENABLED, true),
     // Daily, off-peak. The runner adds start jitter and skips overlapping runs.
