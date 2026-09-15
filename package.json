@@ -2,6 +2,8 @@
   "name": "morrow-frontend",
   "version": "0.1.0",
   "private": true,
+  "description": "",
+  "main": "index.js",
   "workspaces": [
     "server"
   ],
@@ -18,8 +20,13 @@
     "fmt:check": "oxfmt --check",
     "test:server": "npm --workspace @morrow/server run test"
   },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
   "dependencies": {
     "@fontsource-variable/manrope": "^5.2.8",
+    "@mendable/firecrawl-js": "^4.35.0",
+    "dotenv": "^17.4.2",
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
