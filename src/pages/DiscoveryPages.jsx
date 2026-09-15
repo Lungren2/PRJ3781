@@ -29,7 +29,7 @@ import {
   SkillTags,
   StatusPill,
 } from '../components/ProductUI.jsx'
-import { courses, hackathons, jobs, projects } from '../data/mockData.js'
+import { courses, hackathons, jobs } from '../data/mockData.js'
 import { useToast } from '../components/ToastContext.jsx'
 import {
   fetchCertifications,
@@ -655,14 +655,75 @@ export function PortfolioBuilderPage() {
 }
 
 export function ProjectsPage() {
-  const [department, setDepartment] = useState('All departments')
   const toast = useToast()
+  const [showForm, setShowForm] = useState(false)
+  const [formData, setFormData] = useState({
+    title: "",
+    companyName: "",
+    department: "",
+    category: "",
+    deadline: "",
+    description: "",
+  })
+  const [department, setDepartment] = useState('All departments')
+  const [projects, setProjects] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('http://127.0.0.1:8787/api/product-requests')
+      .then((res) => res.json())
+      .then((data) => {
+        setProjects(data)
+        setLoading(false)
+      })
+      .catch((err) => {
+        console.error(err)
+        setLoading(false)
+      })
+  }, [])
+
+  async function handleSubmit(event) {
+    event.preventDefault()
+
+    const response = await fetch("http://127.0.0.1:8787/api/product-requests", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        title: formData.title,
+        companyName: formData.companyName,
+        department: formData.department,
+        category: formData.category,
+        deadline: formData.deadline,
+        description: formData.description,
+        status: "Open",
+      }),
+    })
+
+    const newProject = await response.json()
+
+    setProjects((prev) => [...prev, newProject])
+    setShowForm(false)
+
+    setFormData({
+      title: "",
+      companyName: "",
+      department: "",
+      category: "",
+      deadline: "",
+      description: "",
+    })
+  }
+
   const visibleProjects = useMemo(
     () =>
       projects.filter(
-        (project) => department === 'All departments' || project.department === department,
+        (project) =>
+          department === 'All departments' ||
+          project.department === department
       ),
-    [department],
+    [projects, department]
   )
 
   return (
@@ -678,6 +739,8 @@ export function ProjectsPage() {
           label="Project module"
           title="Product requests"
           copy="Future service: post, join, track, and complete small scoped projects."
+          status="Connected"
+          tone="sage"
         />
         <PreviewNotice>
           Organisations and briefs are fictional examples. Joining and completion states are
@@ -717,46 +780,153 @@ export function ProjectsPage() {
             <div className="results-toolbar">
               <div>
                 <p className="eyebrow">Open requests</p>
-                <h2 id="project-list-title">{visibleProjects.length} project briefs</h2>
+                <h2 id="project-list-title">
+                  {loading ? 'Loading...' : `${visibleProjects.length} project briefs`}
+                </h2>
               </div>
+              <button
+                className="button button--dark"
+                type="button"
+                onClick={() => setShowForm(true)}
+              >
+                + Post Request
+              </button>
             </div>
-            {visibleProjects.map((project) => (
-              <article key={project.title}>
-                <div className="project-row__top">
-                  <span className="project-icon">
-                    <Layers3 size={20} />
-                  </span>
-                  <StatusPill tone={project.status === 'Open' ? 'sage' : 'blue'}>
-                    {project.status}
-                  </StatusPill>
-                </div>
-                <p>{project.organisation}</p>
-                <h3>{project.title}</h3>
-                <div className="project-row__meta">
-                  <span>
-                    <BriefcaseBusiness size={15} /> {project.department}
-                  </span>
-                  <span>
-                    <Clock3 size={15} /> {project.commitment}
-                  </span>
-                </div>
-                <SkillTags skills={project.skills} />
-                <button
-                  className="text-action"
-                  type="button"
-                  onClick={() =>
-                    toast(
-                      'The project detail, team, and completion workflow will connect here later.',
-                    )
-                  }
-                >
-                  View project <ArrowUpRight size={16} />
-                </button>
-              </article>
-            ))}
+
+            {visibleProjects.length === 0 && !loading ? (
+              <div className="empty-state">
+                <Layers3 size={28} />
+                <h2>No project requests yet</h2>
+                <p>Create a Product Request and it will appear here.</p>
+              </div>
+            ) : (
+              visibleProjects.map((project) => (
+                <article key={project._id || project.title}>
+                  <div className="project-row__top">
+                    <span className="project-icon">
+                      <Layers3 size={20} />
+                    </span>
+                    <StatusPill tone={project.status === 'Open' ? 'sage' : 'blue'}>
+                      {project.status}
+                    </StatusPill>
+                  </div>
+                  <p>{project.companyName || project.organisation}</p>
+                  <h3>{project.title}</h3>
+                  <div className="project-row__meta">
+                    <span>
+                      <BriefcaseBusiness size={15} /> {project.department}
+                    </span>
+                    <span>
+                      <Clock3 size={15} /> {project.category || project.commitment}
+                    </span>
+                  </div>
+                  <p className="project-description">{project.description}</p>
+                  <Link
+                    to={`/projects/${project._id}`}
+                    className="text-action"
+                  >
+                    View project <ArrowUpRight size={16} />
+                  </Link>
+                </article>
+              ))
+            )}
           </div>
         </section>
       </div>
+      {showForm && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-header">
+              <h2>Post a Product Request</h2>
+              <button
+                className="icon-button"
+                type="button"
+                onClick={() => setShowForm(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <p>
+              Employers and university departments can create a new project request here.
+            </p>
+
+            <form className="modal-form" onSubmit={handleSubmit}>
+              <label>
+                Project Title
+                <input
+                  type="text"
+                  placeholder="e.g. GradConnect Landing Page"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                />
+              </label>
+
+              <label>
+                Company / Organisation
+                <input
+                  type="text"
+                  placeholder="Belgium Campus"
+                  value={formData.companyName}
+                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                />
+              </label>
+
+              <label>
+                Department
+                <input
+                  type="text"
+                  placeholder="Information Systems"
+                  value={formData.department}
+                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                />
+              </label>
+
+              <label>
+                Category
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                >
+                  <option value="" disabled>Select a category</option>
+                  <option value="Web Development">Web Development</option>
+                  <option value="Mobile Development">Mobile Development</option>
+                  <option value="UI/UX Design">UI/UX Design</option>
+                  <option value="Data Analysis">Data Analysis</option>
+                  <option value="Research">Research</option>
+                  <option value="Marketing">Marketing</option>
+                  <option value="General">General</option>
+                </select>
+              </label>
+
+              <label>
+                Deadline
+                <input
+                  type="date"
+                  value={formData.deadline}
+                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                />
+              </label>
+
+              <label>
+                Description
+                <textarea
+                  rows="4"
+                  placeholder="Describe what students will be working on..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                />
+              </label>
+
+              <div className="modal-actions">
+                <button className="button button--dark modal-continue" type="submit">
+                  Post Request
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

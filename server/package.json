@@ -15,7 +15,9 @@
     "@azure/msal-node": "^6.0.0",
     "better-sqlite3": "^11.7.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.21.2",
+    "mongoose": "^8.24.4",
     "node-cron": "^3.0.3",
     "robots-parser": "^3.0.1"
   }

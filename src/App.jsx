@@ -16,6 +16,7 @@ import {
 import { AccessDeniedPage, AuthPage, NotFoundPage } from './pages/UtilityPages.jsx'
 import { ToastContext } from './components/ToastContext.jsx'
 import { AuthProvider, RequireCandidate, RequireEmployer } from './components/AuthContext.jsx'
+import ProjectDetailsPage from "./pages/ProjectDetailsPage.jsx"
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -48,6 +49,7 @@ function AppRoutes() {
         <Route path="discover/certifications" element={<CertificationsPage />} />
         <Route path="portfolio-builder" element={<PortfolioBuilderPage />} />
         <Route path="projects" element={<ProjectsPage />} />
+        <Route path="projects/:id" element={<ProjectDetailsPage />} />
         <Route path="auth" element={<AuthPage />} />
         <Route path="forbidden" element={<AccessDeniedPage />} />
         <Route path="*" element={<NotFoundPage />} />
