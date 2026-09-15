@@ -19,6 +19,7 @@ import {
   StatusPill,
 } from '../components/ProductUI.jsx'
 import { useToast } from '../components/ToastContext.jsx'
+import { useAuth } from '../components/AuthContext.jsx'
 
 const candidateRoutes = [
   {
@@ -118,6 +119,7 @@ export function ResumePage() {
   const [fileName, setFileName] = useState('')
   const [dragActive, setDragActive] = useState(false)
   const toast = useToast()
+  const { apiFetch } = useAuth()
 
   const setLocalFile = (file) => {
     if (!file) return
@@ -166,14 +168,22 @@ export function ResumePage() {
 
         <form
           className="resume-form form-surface"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault()
-            toast('Resume profile draft saved for this preview. No data was sent.')
+            const values = Object.fromEntries(new FormData(event.currentTarget))
+            delete values.resume
+            try {
+              await apiFetch('/api/candidate/resume', {
+                method: 'PUT',
+                body: JSON.stringify({ draft: { ...values, fileName } }),
+              })
+              toast('Resume profile draft saved to your demo account.')
+            } catch (error) {
+              toast(`Could not save resume draft: ${error.message}`)
+            }
           }}
         >
-          <PreviewNotice>
-            Files and answers stay in this browser preview and are not sent to a server.
-          </PreviewNotice>
+          <PreviewNotice>The selected file stays in the browser. Its filename and your answers are saved to your local demo account.</PreviewNotice>
           <section aria-labelledby="resume-upload-title">
             <div className="form-section-heading">
               <span className="step-icon">
@@ -215,6 +225,7 @@ export function ResumePage() {
               <input
                 className="sr-only"
                 id="resume-file"
+                name="resume"
                 type="file"
                 accept=".pdf,.doc,.docx"
                 onChange={(event) => setLocalFile(event.target.files[0])}
@@ -235,7 +246,7 @@ export function ResumePage() {
             <div className="form-grid">
               <label className="form-field">
                 <span>Current study level</span>
-                <select defaultValue="">
+                <select name="studyLevel" defaultValue="">
                   <option value="" disabled>
                     Select a level
                   </option>
@@ -246,15 +257,15 @@ export function ResumePage() {
               </label>
               <label className="form-field">
                 <span>Institution</span>
-                <input type="text" placeholder="Your university or college" />
+                <input name="institution" type="text" placeholder="Your university or college" />
               </label>
               <label className="form-field">
                 <span>Field of study</span>
-                <input type="text" placeholder="e.g. Information Systems" />
+                <input name="fieldOfStudy" type="text" placeholder="e.g. Information Systems" />
               </label>
               <label className="form-field">
                 <span>Graduation year</span>
-                <select defaultValue="">
+                <select name="graduationYear" defaultValue="">
                   <option value="" disabled>
                     Select a year
                   </option>
@@ -266,11 +277,11 @@ export function ResumePage() {
               </label>
               <label className="form-field form-field--wide">
                 <span>What roles interest you?</span>
-                <input type="text" placeholder="e.g. product design, data, marketing" />
+                <input name="roles" type="text" placeholder="e.g. product design, data, marketing" />
               </label>
               <label className="form-field form-field--wide">
                 <span>Preferred work setup</span>
-                <select defaultValue="Flexible">
+                <select name="workSetup" defaultValue="Flexible">
                   <option>Flexible</option>
                   <option>On-site</option>
                   <option>Hybrid</option>

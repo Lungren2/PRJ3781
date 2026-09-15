@@ -1,10 +1,8 @@
-import express from 'express'
-import cors from 'cors'
 import { config } from './config.js'
-import { getDb } from './db/index.js'
-import { router } from './routes/certifications.js'
 import { startScheduler } from './crawl/scheduler.js'
+import { createApp } from './app.js'
 
+<<<<<<< HEAD
 getDb()
 
 const app = express()
@@ -25,6 +23,9 @@ app.use((error, req, res, next) => {
   console.error('[api]', error.message)
   res.status(500).json({ error: 'internal error' })
 })
+=======
+const app = createApp()
+>>>>>>> origin/feat/auth-foundation
 
 app.listen(config.port, () => {
   console.log(`[api] listening on http://127.0.0.1:${config.port}`)

@@ -11,6 +11,7 @@ import {
   Instagram,
   Linkedin,
   LogIn,
+  LogOut,
   Mail,
   Menu,
   Sparkles,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useToast } from './ToastContext.jsx'
+import { useAuth } from './AuthContext.jsx'
 
 const candidateLinks = [
   {
@@ -184,6 +186,12 @@ function Header() {
   const candidateTriggerRef = useRef(null)
   const employerTriggerRef = useRef(null)
   const exploreTriggerRef = useRef(null)
+  const { user, logout } = useAuth()
+
+  const signOut = async () => {
+    await logout()
+    setMenuOpen(false)
+  }
 
   useEffect(() => {
     setMenuOpen(false)
@@ -275,16 +283,21 @@ function Header() {
           </nav>
           <div className="header-actions">
             <div className="desktop-auth desktop-only" aria-label="Account actions">
-              <Link className="button button--login" to="/auth?mode=login">
-                <LogIn size={16} aria-hidden="true" /> Log in
-              </Link>
-              <Link className="button button--signup" to="/auth?mode=signup">
-                Sign up <ArrowRight size={16} aria-hidden="true" />
-              </Link>
+              {user ? <>
+                <span className="account-summary"><UserRound size={16} aria-hidden="true" /> {user.displayName}</span>
+                <button className="button button--login" type="button" onClick={signOut}><LogOut size={16} aria-hidden="true" /> Log out</button>
+              </> : <>
+                <Link className="button button--login" to="/auth?mode=login">
+                  <LogIn size={16} aria-hidden="true" /> Log in
+                </Link>
+                <Link className="button button--signup" to="/auth?mode=signup">
+                  Demo access <ArrowRight size={16} aria-hidden="true" />
+                </Link>
+              </>}
             </div>
-            {!menuOpen && (
+            {!menuOpen && !user && (
               <Link className="button button--signup mobile-signup" to="/auth?mode=signup">
-                Sign up
+                Demo access
               </Link>
             )}
             <button
@@ -316,25 +329,37 @@ function Header() {
                 <UserRound size={19} aria-hidden="true" />
               </span>
               <div>
-                <strong id="mobile-account-title">Your Morrow</strong>
-                <small>Save your progress and opportunities</small>
+                <strong id="mobile-account-title">{user?.displayName ?? 'Your Morrow'}</strong>
+                <small>{user?.email ?? 'Save your progress and opportunities'}</small>
               </div>
             </div>
             <div className="mobile-account-panel__actions">
-              <Link
-                className="button button--login"
-                to="/auth?mode=login"
-                onClick={() => setMenuOpen(false)}
-              >
-                <LogIn size={16} aria-hidden="true" /> Log in
-              </Link>
-              <Link
-                className="button button--signup"
-                to="/auth?mode=signup"
-                onClick={() => setMenuOpen(false)}
-              >
-                <UserPlus size={16} aria-hidden="true" /> Sign up
-              </Link>
+              {user ? (
+                <button
+                  className="button button--login"
+                  type="button"
+                  onClick={signOut}
+                >
+                  <LogOut size={16} aria-hidden="true" /> Log out
+                </button>
+              ) : (
+                <>
+                  <Link
+                    className="button button--login"
+                    to="/auth?mode=login"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <LogIn size={16} aria-hidden="true" /> Log in
+                  </Link>
+                  <Link
+                    className="button button--signup"
+                    to="/auth?mode=signup"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    <UserPlus size={16} aria-hidden="true" /> Demo access
+                  </Link>
+                </>
+              )}
             </div>
           </section>
           <Link className="mobile-jobs-link" to="/jobs" onClick={() => setMenuOpen(false)}>

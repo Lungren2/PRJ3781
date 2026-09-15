@@ -13,6 +13,7 @@ import { Link } from 'react-router-dom'
 import { PageIntro, PreviewNotice, SkillTags, StatusPill } from '../components/ProductUI.jsx'
 import { candidates } from '../data/mockData.js'
 import { useToast } from '../components/ToastContext.jsx'
+import { useAuth } from '../components/AuthContext.jsx'
 
 const employerServices = [
   {
@@ -196,6 +197,8 @@ export function PostJobPage() {
   const [type, setType] = useState('Internship')
   const [location, setLocation] = useState('')
   const toast = useToast()
+  const { user, apiFetch } = useAuth()
+  const organization = user.organizations[0]
 
   return (
     <main id="main-content" className="product-page">
@@ -210,12 +213,21 @@ export function PostJobPage() {
       <div className="page-container job-post-layout">
         <form
           className="form-surface job-post-form"
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault()
-            toast('Job draft saved locally for this frontend preview.')
+            const draft = Object.fromEntries(new FormData(event.currentTarget))
+            try {
+              await apiFetch(`/api/organizations/${organization.id}/jobs`, {
+                method: 'POST',
+                body: JSON.stringify({ draft }),
+              })
+              toast('Job draft saved to your organization workspace. It was not published.')
+            } catch (error) {
+              toast(`Could not save job draft: ${error.message}`)
+            }
           }}
         >
-          <PreviewNotice>No listing will be published and no information is sent.</PreviewNotice>
+          <PreviewNotice>The draft is saved to your demo organization. No listing will be published.</PreviewNotice>
           <section aria-labelledby="role-basics-title">
             <div className="form-section-heading">
               <span className="step-icon">
@@ -230,6 +242,7 @@ export function PostJobPage() {
               <label className="form-field form-field--wide">
                 <span>Job title</span>
                 <input
+                  name="title"
                   required
                   type="text"
                   value={title}
@@ -239,7 +252,7 @@ export function PostJobPage() {
               </label>
               <label className="form-field">
                 <span>Opportunity type</span>
-                <select value={type} onChange={(event) => setType(event.target.value)}>
+                <select name="type" value={type} onChange={(event) => setType(event.target.value)}>
                   <option>Internship</option>
                   <option>Part-time</option>
                   <option>Entry level</option>
@@ -249,6 +262,7 @@ export function PostJobPage() {
               <label className="form-field">
                 <span>Location</span>
                 <input
+                  name="location"
                   required
                   type="text"
                   value={location}
@@ -258,7 +272,7 @@ export function PostJobPage() {
               </label>
               <label className="form-field">
                 <span>Work setup</span>
-                <select defaultValue="Hybrid">
+                <select name="workSetup" defaultValue="Hybrid">
                   <option>On-site</option>
                   <option>Hybrid</option>
                   <option>Remote</option>
@@ -266,7 +280,7 @@ export function PostJobPage() {
               </label>
               <label className="form-field">
                 <span>Pay or stipend</span>
-                <input type="text" placeholder="e.g. R9 000 / month" />
+                <input name="pay" type="text" placeholder="e.g. R9 000 / month" />
               </label>
             </div>
           </section>
@@ -284,13 +298,14 @@ export function PostJobPage() {
               <label className="form-field form-field--wide">
                 <span>What will this person work on?</span>
                 <textarea
+                  name="description"
                   rows="6"
                   placeholder="Describe the work, team, and a typical first project."
                 />
               </label>
               <label className="form-field form-field--wide">
                 <span>Useful skills</span>
-                <input type="text" placeholder="e.g. Excel, SQL, clear communication" />
+                <input name="skills" type="text" placeholder="e.g. Excel, SQL, clear communication" />
               </label>
             </div>
           </section>
