@@ -165,3 +165,33 @@ CREATE TABLE IF NOT EXISTS provider_state (
   cursor     TEXT,
   updated_at TEXT NOT NULL
 );
+
+
+CREATE TABLE IF NOT EXISTS product_requests (
+  id              TEXT PRIMARY KEY,
+  organization_id TEXT NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
+  created_by      TEXT NOT NULL REFERENCES users (id),
+  title           TEXT NOT NULL,
+  description     TEXT NOT NULL,
+  company_name    TEXT NOT NULL,
+  department      TEXT NOT NULL,
+  category        TEXT NOT NULL DEFAULT 'General',
+  deadline        TEXT,
+  status          TEXT NOT NULL DEFAULT 'Open'
+                  CHECK (status IN ('Open', 'In Progress', 'Completed')),
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_requests_filter
+  ON product_requests (status, department, category, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS product_request_applications (
+  product_request_id TEXT NOT NULL REFERENCES product_requests (id) ON DELETE CASCADE,
+  user_id            TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  created_at         TEXT NOT NULL,
+  PRIMARY KEY (product_request_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_product_request_applications_user
+  ON product_request_applications (user_id, created_at DESC);
