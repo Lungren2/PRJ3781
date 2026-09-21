@@ -810,7 +810,7 @@ export function ProjectsPage() {
               </div>
             ) : (
               visibleProjects.map((project) => (
-                <article key={project._id || project.title}>
+                <article key={project.id || project.title}>
                   <div className="project-row__top">
                     <span className="project-icon">
                       <Layers3 size={20} />
