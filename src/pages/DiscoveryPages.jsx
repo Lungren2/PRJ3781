@@ -31,6 +31,7 @@ import {
 } from '../components/ProductUI.jsx'
 import { courses, hackathons, jobs } from '../data/mockData.js'
 import { useToast } from '../components/ToastContext.jsx'
+import { useAuth } from '../components/AuthContext.jsx'
 import {
   fetchCertifications,
   fetchFacets,
@@ -656,6 +657,7 @@ export function PortfolioBuilderPage() {
 
 export function ProjectsPage() {
   const toast = useToast()
+  const { user, apiFetch } = useAuth()
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
@@ -670,7 +672,7 @@ export function ProjectsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8787/api/product-requests')
+    fetch('/api/product-requests')
       .then((res) => res.json())
       .then((data) => {
         setProjects(data)
@@ -685,25 +687,24 @@ export function ProjectsPage() {
   async function handleSubmit(event) {
     event.preventDefault()
 
-    const response = await fetch("http://127.0.0.1:8787/api/product-requests", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+    const organization = user?.organizations?.[0]
+    if (!organization) return
+
+    const newProject = await apiFetch('/api/product-requests', {
+      method: 'POST',
       body: JSON.stringify({
+        organizationId: organization.id,
         title: formData.title,
         companyName: formData.companyName,
         department: formData.department,
         category: formData.category,
         deadline: formData.deadline,
         description: formData.description,
-        status: "Open",
+        status: 'Open',
       }),
     })
 
-    const newProject = await response.json()
-
-    setProjects((prev) => [...prev, newProject])
+    setProjects((prev) => [newProject, ...prev])
     setShowForm(false)
 
     setFormData({
@@ -784,13 +785,21 @@ export function ProjectsPage() {
                   {loading ? 'Loading...' : `${visibleProjects.length} project briefs`}
                 </h2>
               </div>
-              <button
-                className="button button--dark"
-                type="button"
-                onClick={() => setShowForm(true)}
-              >
-                + Post Request
-              </button>
+              {user?.organizations?.length > 0 && (
+                <button
+                  className="button button--dark"
+                  type="button"
+                  onClick={() => {
+                    setFormData((current) => ({
+                      ...current,
+                      companyName: user.organizations[0].name,
+                    }))
+                    setShowForm(true)
+                  }}
+                >
+                  + Post Request
+                </button>
+              )}
             </div>
 
             {visibleProjects.length === 0 && !loading ? (
@@ -822,7 +831,7 @@ export function ProjectsPage() {
                   </div>
                   <p className="project-description">{project.description}</p>
                   <Link
-                    to={`/projects/${project._id}`}
+                    to={`/projects/${project.id}`}
                     className="text-action"
                   >
                     View project <ArrowUpRight size={16} />
@@ -868,7 +877,7 @@ export function ProjectsPage() {
                   type="text"
                   placeholder="Belgium Campus"
                   value={formData.companyName}
-                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
+                  readOnly
                 />
               </label>
 
