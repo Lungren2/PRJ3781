@@ -668,6 +668,7 @@ export function ProjectsPage() {
     description: "",
   })
   const [department, setDepartment] = useState('All departments')
+  const [status, setStatus] = useState('Open')
   const [organizationId, setOrganizationId] = useState('')
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
@@ -727,10 +728,10 @@ export function ProjectsPage() {
     () =>
       projects.filter(
         (project) =>
-          department === 'All departments' ||
-          project.department === department
+          (department === 'All departments' || project.department === department) &&
+          project.status === status,
       ),
-    [projects, department]
+    [projects, department, status],
   )
 
   return (
@@ -769,10 +770,10 @@ export function ProjectsPage() {
             </label>
             <label>
               <span>Status</span>
-              <select defaultValue="Open">
-                <option>Open</option>
-                <option>In progress</option>
-                <option>Completed</option>
+              <select value={status} onChange={(event) => setStatus(event.target.value)}>
+                <option value="Open">Open</option>
+                <option value="In Progress">In progress</option>
+                <option value="Completed">Completed</option>
               </select>
             </label>
             <div>
@@ -786,7 +787,7 @@ export function ProjectsPage() {
           <div className="project-results">
             <div className="results-toolbar">
               <div>
-                <p className="eyebrow">Open requests</p>
+                <p className="eyebrow">{status} requests</p>
                 <h2 id="project-list-title">
                   {loading ? 'Loading...' : `${visibleProjects.length} project briefs`}
                 </h2>
@@ -813,8 +814,8 @@ export function ProjectsPage() {
             {visibleProjects.length === 0 && !loading ? (
               <div className="empty-state">
                 <Layers3 size={28} />
-                <h2>No project requests yet</h2>
-                <p>Create a Product Request and it will appear here.</p>
+                <h2>No matching project requests</h2>
+                <p>Try another department or status filter.</p>
               </div>
             ) : (
               visibleProjects.map((project) => (
