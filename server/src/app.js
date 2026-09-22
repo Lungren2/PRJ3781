@@ -8,6 +8,7 @@ import { createEntraProvider } from './auth/entra.js'
 import { createAuthRouter } from './routes/auth.js'
 import { router as certificationsRouter } from './routes/certifications.js'
 import { workspaceRouter } from './routes/workspaces.js'
+import { productRouter } from './routes/productRequests.js'
 
 export function createApp({ entraProvider = createEntraProvider(config.auth.entra) } = {}) {
   getDb()
@@ -28,6 +29,7 @@ export function createApp({ entraProvider = createEntraProvider(config.auth.entr
   app.use('/api/auth', createAuthRouter({ entraProvider }))
   app.use('/api', workspaceRouter)
   app.use('/api', certificationsRouter)
+  app.use('/api', productRouter)
 
   app.use((error, req, res, next) => {
     console.error('[api]', error.message)

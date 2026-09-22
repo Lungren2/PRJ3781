@@ -16,7 +16,7 @@ import {
 import { AccessDeniedPage, AuthPage, NotFoundPage } from './pages/UtilityPages.jsx'
 import { ToastContext } from './components/ToastContext.jsx'
 import { AuthProvider, RequireCandidate, RequireEmployer } from './components/AuthContext.jsx'
-import ProjectDetailsPage from "./pages/ProjectDetailsPage.jsx"
+import ProjectDetailsPage from './pages/ProjectDetailsSqlitePage.jsx'
 
 function ScrollToTop() {
   const { pathname } = useLocation()

@@ -31,6 +31,7 @@ import {
 } from '../components/ProductUI.jsx'
 import { courses, hackathons, jobs } from '../data/mockData.js'
 import { useToast } from '../components/ToastContext.jsx'
+import { useAuth } from '../components/AuthContext.jsx'
 import {
   fetchCertifications,
   fetchFacets,
@@ -656,6 +657,7 @@ export function PortfolioBuilderPage() {
 
 export function ProjectsPage() {
   const toast = useToast()
+  const { user, apiFetch } = useAuth()
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
     title: "",
@@ -666,11 +668,13 @@ export function ProjectsPage() {
     description: "",
   })
   const [department, setDepartment] = useState('All departments')
+  const [status, setStatus] = useState('Open')
+  const [organizationId, setOrganizationId] = useState('')
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8787/api/product-requests')
+    fetch('/api/product-requests')
       .then((res) => res.json())
       .then((data) => {
         setProjects(data)
@@ -682,28 +686,32 @@ export function ProjectsPage() {
       })
   }, [])
 
+  const publisherOrganizations = useMemo(
+    () => user?.organizations?.filter(({ role }) => role === 'owner' || role === 'recruiter') ?? [],
+    [user],
+  )
+
   async function handleSubmit(event) {
     event.preventDefault()
 
-    const response = await fetch("http://127.0.0.1:8787/api/product-requests", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+    const organization = publisherOrganizations.find(({ id }) => id === organizationId)
+    if (!organization) return
+
+    const newProject = await apiFetch('/api/product-requests', {
+      method: 'POST',
       body: JSON.stringify({
+        organizationId: organization.id,
         title: formData.title,
         companyName: formData.companyName,
         department: formData.department,
         category: formData.category,
         deadline: formData.deadline,
         description: formData.description,
-        status: "Open",
+        status: 'Open',
       }),
     })
 
-    const newProject = await response.json()
-
-    setProjects((prev) => [...prev, newProject])
+    setProjects((prev) => [newProject, ...prev])
     setShowForm(false)
 
     setFormData({
@@ -720,10 +728,10 @@ export function ProjectsPage() {
     () =>
       projects.filter(
         (project) =>
-          department === 'All departments' ||
-          project.department === department
+          (department === 'All departments' || project.department === department) &&
+          project.status === status,
       ),
-    [projects, department]
+    [projects, department, status],
   )
 
   return (
@@ -762,10 +770,10 @@ export function ProjectsPage() {
             </label>
             <label>
               <span>Status</span>
-              <select defaultValue="Open">
-                <option>Open</option>
-                <option>In progress</option>
-                <option>Completed</option>
+              <select value={status} onChange={(event) => setStatus(event.target.value)}>
+                <option value="Open">Open</option>
+                <option value="In Progress">In progress</option>
+                <option value="Completed">Completed</option>
               </select>
             </label>
             <div>
@@ -779,29 +787,39 @@ export function ProjectsPage() {
           <div className="project-results">
             <div className="results-toolbar">
               <div>
-                <p className="eyebrow">Open requests</p>
+                <p className="eyebrow">{status} requests</p>
                 <h2 id="project-list-title">
                   {loading ? 'Loading...' : `${visibleProjects.length} project briefs`}
                 </h2>
               </div>
-              <button
-                className="button button--dark"
-                type="button"
-                onClick={() => setShowForm(true)}
-              >
-                + Post Request
-              </button>
+              {publisherOrganizations.length > 0 && (
+                <button
+                  className="button button--dark"
+                  type="button"
+                  onClick={() => {
+                    const organization = publisherOrganizations[0]
+                    setOrganizationId(organization.id)
+                    setFormData((current) => ({
+                      ...current,
+                      companyName: organization.name,
+                    }))
+                    setShowForm(true)
+                  }}
+                >
+                  + Post Request
+                </button>
+              )}
             </div>
 
             {visibleProjects.length === 0 && !loading ? (
               <div className="empty-state">
                 <Layers3 size={28} />
-                <h2>No project requests yet</h2>
-                <p>Create a Product Request and it will appear here.</p>
+                <h2>No matching project requests</h2>
+                <p>Try another department or status filter.</p>
               </div>
             ) : (
               visibleProjects.map((project) => (
-                <article key={project._id || project.title}>
+                <article key={project.id || project.title}>
                   <div className="project-row__top">
                     <span className="project-icon">
                       <Layers3 size={20} />
@@ -822,7 +840,7 @@ export function ProjectsPage() {
                   </div>
                   <p className="project-description">{project.description}</p>
                   <Link
-                    to={`/projects/${project._id}`}
+                    to={`/projects/${project.id}`}
                     className="text-action"
                   >
                     View project <ArrowUpRight size={16} />
@@ -864,12 +882,29 @@ export function ProjectsPage() {
 
               <label>
                 Company / Organisation
-                <input
-                  type="text"
-                  placeholder="Belgium Campus"
-                  value={formData.companyName}
-                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                />
+                {publisherOrganizations.length > 1 ? (
+                  <select
+                    value={organizationId}
+                    onChange={(event) => {
+                      const organization = publisherOrganizations.find(
+                        ({ id }) => id === event.target.value,
+                      )
+                      setOrganizationId(event.target.value)
+                      setFormData((current) => ({
+                        ...current,
+                        companyName: organization?.name ?? '',
+                      }))
+                    }}
+                  >
+                    {publisherOrganizations.map((organization) => (
+                      <option key={organization.id} value={organization.id}>
+                        {organization.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input type="text" value={formData.companyName} readOnly />
+                )}
               </label>
 
               <label>
