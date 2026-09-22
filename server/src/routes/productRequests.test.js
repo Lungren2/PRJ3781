@@ -125,7 +125,51 @@ test('active product repository exposes one asynchronous storage contract', asyn
   assert.equal(deleted, true)
 })
 
-test('product request reads keep a storage-neutral API shape and filtering contract', async () => {
+test('public reads expose project data without user contact details', async () => {
+  const employer = await demoLogin('employer')
+  const candidate = await demoLogin('candidate')
+  const created = await createProject(employer, {
+    title: 'Privacy project',
+    department: 'Marketing',
+    category: 'Research',
+  })
+
+  const applied = await request('/api/product-requests/' + created.id + '/assign', {
+    method: 'PUT',
+    cookie: candidate.cookie,
+    csrfToken: candidate.csrfToken,
+  })
+  assert.equal(applied.status, 200)
+
+  const publicDetailResponse = await request('/api/product-requests/' + created.id)
+  assert.equal(publicDetailResponse.status, 200)
+  const publicDetail = await publicDetailResponse.json()
+  assert.equal(publicDetail.id, created.id)
+  assert.equal(publicDetail.applicantCount, 1)
+  assert.equal(publicDetail.hasApplied, false)
+  assert.equal('assignedStudents' in publicDetail, false)
+  assert.equal('email' in publicDetail.createdBy, false)
+
+  const publicListResponse = await request('/api/product-requests?department=Marketing')
+  assert.equal(publicListResponse.status, 200)
+  const publicList = await publicListResponse.json()
+  const listed = publicList.find((item) => item.id === created.id)
+  assert.ok(listed)
+  assert.equal(listed.applicantCount, 1)
+  assert.equal('assignedStudents' in listed, false)
+  assert.equal('email' in listed.createdBy, false)
+
+  const publisherDetailResponse = await request('/api/product-requests/' + created.id, {
+    cookie: employer.cookie,
+  })
+  assert.equal(publisherDetailResponse.status, 200)
+  const publisherDetail = await publisherDetailResponse.json()
+  assert.equal(publisherDetail.assignedStudents.length, 1)
+  assert.equal(publisherDetail.assignedStudents[0].id, candidate.user.id)
+  assert.equal(publisherDetail.assignedStudents[0].email, candidate.user.email)
+})
+
+test('product request filtering remains storage-neutral', async () => {
   const employer = await demoLogin('employer')
   const created = await createProject(employer, {
     title: 'Filtered project',
@@ -134,13 +178,6 @@ test('product request reads keep a storage-neutral API shape and filtering contr
   })
 
   assert.equal('_id' in created, false)
-  assert.equal(created.companyName, 'Morrow Demo Company')
-  assert.equal(created.createdBy.id, employer.user.id)
-  assert.equal(Array.isArray(created.assignedStudents), true)
-
-  const detailResponse = await request('/api/product-requests/' + created.id)
-  assert.equal(detailResponse.status, 200)
-  assert.equal((await detailResponse.json()).id, created.id)
 
   const matchingResponse = await request('/api/product-requests?department=Marketing')
   assert.equal(matchingResponse.status, 200)
@@ -166,8 +203,9 @@ test('candidate applications use the signed-in Morrow user and remain idempotent
   })
   assert.equal(applyResponse.status, 200)
   const applied = await applyResponse.json()
-  assert.equal(applied.assignedStudents.length, 1)
-  assert.equal(applied.assignedStudents[0].id, candidate.user.id)
+  assert.equal(applied.hasApplied, true)
+  assert.equal(applied.applicantCount, 1)
+  assert.equal('assignedStudents' in applied, false)
 
   const duplicateResponse = await request('/api/product-requests/' + created.id + '/assign', {
     method: 'PUT',
@@ -175,7 +213,45 @@ test('candidate applications use the signed-in Morrow user and remain idempotent
     csrfToken: candidate.csrfToken,
   })
   assert.equal(duplicateResponse.status, 200)
-  assert.equal((await duplicateResponse.json()).assignedStudents.length, 1)
+  const duplicate = await duplicateResponse.json()
+  assert.equal(duplicate.hasApplied, true)
+  assert.equal(duplicate.applicantCount, 1)
+
+  const candidateDetailResponse = await request('/api/product-requests/' + created.id, {
+    cookie: candidate.cookie,
+  })
+  const candidateDetail = await candidateDetailResponse.json()
+  assert.equal(candidateDetail.hasApplied, true)
+  assert.equal('assignedStudents' in candidateDetail, false)
+})
+
+test('applications cannot bypass closed status or an expired deadline', async () => {
+  const employer = await demoLogin('employer')
+  const candidate = await demoLogin('candidate')
+
+  const inProgress = await createProject(employer, {
+    title: 'Already started',
+    status: 'In Progress',
+  })
+  const statusClosed = await request('/api/product-requests/' + inProgress.id + '/assign', {
+    method: 'PUT',
+    cookie: candidate.cookie,
+    csrfToken: candidate.csrfToken,
+  })
+  assert.equal(statusClosed.status, 409)
+  assert.equal((await statusClosed.json()).error, 'applications are closed')
+
+  const expired = await createProject(employer, {
+    title: 'Expired project',
+    deadline: '2000-01-01',
+  })
+  const deadlineClosed = await request('/api/product-requests/' + expired.id + '/assign', {
+    method: 'PUT',
+    cookie: candidate.cookie,
+    csrfToken: candidate.csrfToken,
+  })
+  assert.equal(deadlineClosed.status, 409)
+  assert.equal((await deadlineClosed.json()).error, 'applications are closed')
 })
 
 test('publisher updates and status changes require organization access and CSRF', async () => {

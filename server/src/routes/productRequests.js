@@ -25,6 +25,47 @@ function publisherMembership(user, organizationId) {
   return membership && PUBLISHER_ROLES.has(membership.role) ? membership : null
 }
 
+function publicRequestView(request, user = null) {
+  const assignedStudents = request.assignedStudents ?? []
+  return {
+    id: request.id,
+    title: request.title,
+    description: request.description,
+    companyName: request.companyName,
+    organizationId: request.organizationId,
+    department: request.department,
+    category: request.category,
+    deadline: request.deadline,
+    status: request.status,
+    createdBy: request.createdBy
+      ? { id: request.createdBy.id, name: request.createdBy.name }
+      : null,
+    applicantCount: assignedStudents.length,
+    hasApplied: Boolean(user?.id && assignedStudents.some(({ id }) => id === user.id)),
+    createdAt: request.createdAt,
+    updatedAt: request.updatedAt,
+  }
+}
+
+function detailRequestView(request, user) {
+  const view = publicRequestView(request, user)
+  if (!publisherMembership(user, request.organizationId)) return view
+
+  return {
+    ...view,
+    assignedStudents: request.assignedStudents ?? [],
+  }
+}
+
+function applicationsAreOpen(request) {
+  if (request.status !== 'Open') return false
+  if (!request.deadline) return true
+
+  const deadlineDate = String(request.deadline).slice(0, 10)
+  const today = new Date().toISOString().slice(0, 10)
+  return deadlineDate >= today
+}
+
 const requireRequestPublisher = asyncRoute(async (req, res, next) => {
   const request = await getProductRequestById(req.params.id)
   if (!request) return res.status(404).json({ error: 'product request not found' })
@@ -40,7 +81,8 @@ const requireRequestPublisher = asyncRoute(async (req, res, next) => {
 productRouter.get(
   '/product-requests',
   asyncRoute(async (req, res) => {
-    res.json(await getAllProductRequests(req.query))
+    const requests = await getAllProductRequests(req.query)
+    res.json(requests.map((request) => publicRequestView(request, req.user)))
   }),
 )
 
@@ -49,7 +91,7 @@ productRouter.get(
   asyncRoute(async (req, res) => {
     const request = await getProductRequestById(req.params.id)
     if (!request) return res.status(404).json({ error: 'product request not found' })
-    res.json(request)
+    res.json(detailRequestView(request, req.user))
   }),
 )
 
@@ -108,10 +150,14 @@ productRouter.put(
   requireCandidate,
   requireCsrf,
   asyncRoute(async (req, res) => {
-    if (!(await getProductRequestById(req.params.id))) {
-      return res.status(404).json({ error: 'product request not found' })
+    const request = await getProductRequestById(req.params.id)
+    if (!request) return res.status(404).json({ error: 'product request not found' })
+    if (!applicationsAreOpen(request)) {
+      return res.status(409).json({ error: 'applications are closed' })
     }
-    res.json(await assignStudent(req.params.id, req.user.id))
+
+    const updated = await assignStudent(req.params.id, req.user.id)
+    res.json(publicRequestView(updated, req.user))
   }),
 )
 

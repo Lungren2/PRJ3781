@@ -29,6 +29,7 @@ export default function ProjectDetailsSqlitePage() {
       toast('Application submitted successfully.')
     } catch (error) {
       console.error(error)
+      toast(error.message || 'Could not submit application.')
     } finally {
       setApplying(false)
     }
@@ -51,9 +52,11 @@ export default function ProjectDetailsSqlitePage() {
     )
   }
 
-  const hasApplied =
-    project.assignedStudents?.some((student) => (student.id || student) === user?.id) || false
-  const deadlinePassed = project.deadline && new Date(project.deadline) < new Date()
+  const hasApplied = Boolean(project.hasApplied)
+  const deadlinePassed =
+    project.deadline && String(project.deadline).slice(0, 10) < new Date().toISOString().slice(0, 10)
+  const applicationsClosed = project.status !== 'Open' || deadlinePassed
+  const applicantCount = project.applicantCount ?? project.assignedStudents?.length ?? 0
 
   return (
     <main className="product-page">
@@ -102,53 +105,54 @@ export default function ProjectDetailsSqlitePage() {
             </div>
             <div className="info-card">
               <span className="deadline-label">Applicants</span>
-              <strong>{project.assignedStudents?.length || 0}</strong>
+              <strong>{applicantCount}</strong>
             </div>
           </div>
 
-          <div className="applications-panel">
-            <div className="applications-panel__header">
-              <div>
-                <h3>Applications</h3>
-                <p>
-                  {project.assignedStudents?.length || 0} student
-                  {(project.assignedStudents?.length || 0) !== 1 ? 's' : ''} applied
-                </p>
+          {Array.isArray(project.assignedStudents) && (
+            <div className="applications-panel">
+              <div className="applications-panel__header">
+                <div>
+                  <h3>Applications</h3>
+                  <p>
+                    {applicantCount} student{applicantCount !== 1 ? 's' : ''} applied
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {project.assignedStudents?.length > 0 ? (
-              <div className="applicant-list">
-                {project.assignedStudents.map((student, index) => (
-                  <div className="applicant-row" key={student.id || student}>
-                    <div className="applicant-avatar">
-                      {student.name ? student.name.charAt(0).toUpperCase() : index + 1}
+              {project.assignedStudents.length > 0 ? (
+                <div className="applicant-list">
+                  {project.assignedStudents.map((student, index) => (
+                    <div className="applicant-row" key={student.id || student}>
+                      <div className="applicant-avatar">
+                        {student.name ? student.name.charAt(0).toUpperCase() : index + 1}
+                      </div>
+                      <div className="applicant-info">
+                        <strong>{student.name || 'Applicant'}</strong>
+                        <span>{student.email || 'Student account'}</span>
+                      </div>
                     </div>
-                    <div className="applicant-info">
-                      <strong>{student.name || 'Applicant'}</strong>
-                      <span>{student.email || 'Student account'}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="no-applications">No applications yet.</p>
-            )}
-          </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="no-applications">No applications yet.</p>
+              )}
+            </div>
+          )}
 
           <div className="project-footer">
             <button
               className={
                 'button ' +
-                (hasApplied || deadlinePassed || !user?.isCandidate
+                (hasApplied || applicationsClosed || !user?.isCandidate
                   ? 'button--outline'
                   : 'button--dark')
               }
               onClick={handleApply}
-              disabled={applying || hasApplied || deadlinePassed || !user?.isCandidate}
+              disabled={applying || hasApplied || applicationsClosed || !user?.isCandidate}
               type="button"
             >
-              {deadlinePassed
+              {applicationsClosed
                 ? 'Applications Closed'
                 : hasApplied
                   ? 'Applied'
