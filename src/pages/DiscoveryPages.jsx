@@ -668,6 +668,7 @@ export function ProjectsPage() {
     description: "",
   })
   const [department, setDepartment] = useState('All departments')
+  const [organizationId, setOrganizationId] = useState('')
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -684,10 +685,15 @@ export function ProjectsPage() {
       })
   }, [])
 
+  const publisherOrganizations = useMemo(
+    () => user?.organizations?.filter(({ role }) => role === 'owner' || role === 'recruiter') ?? [],
+    [user],
+  )
+
   async function handleSubmit(event) {
     event.preventDefault()
 
-    const organization = user?.organizations?.[0]
+    const organization = publisherOrganizations.find(({ id }) => id === organizationId)
     if (!organization) return
 
     const newProject = await apiFetch('/api/product-requests', {
@@ -785,14 +791,16 @@ export function ProjectsPage() {
                   {loading ? 'Loading...' : `${visibleProjects.length} project briefs`}
                 </h2>
               </div>
-              {user?.organizations?.length > 0 && (
+              {publisherOrganizations.length > 0 && (
                 <button
                   className="button button--dark"
                   type="button"
                   onClick={() => {
+                    const organization = publisherOrganizations[0]
+                    setOrganizationId(organization.id)
                     setFormData((current) => ({
                       ...current,
-                      companyName: user.organizations[0].name,
+                      companyName: organization.name,
                     }))
                     setShowForm(true)
                   }}
@@ -873,12 +881,29 @@ export function ProjectsPage() {
 
               <label>
                 Company / Organisation
-                <input
-                  type="text"
-                  placeholder="Belgium Campus"
-                  value={formData.companyName}
-                  readOnly
-                />
+                {publisherOrganizations.length > 1 ? (
+                  <select
+                    value={organizationId}
+                    onChange={(event) => {
+                      const organization = publisherOrganizations.find(
+                        ({ id }) => id === event.target.value,
+                      )
+                      setOrganizationId(event.target.value)
+                      setFormData((current) => ({
+                        ...current,
+                        companyName: organization?.name ?? '',
+                      }))
+                    }}
+                  >
+                    {publisherOrganizations.map((organization) => (
+                      <option key={organization.id} value={organization.id}>
+                        {organization.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input type="text" value={formData.companyName} readOnly />
+                )}
               </label>
 
               <label>
