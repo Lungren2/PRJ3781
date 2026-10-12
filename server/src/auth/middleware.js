@@ -1,5 +1,6 @@
 import crypto from 'node:crypto'
 import { readCookie } from './cookies.js'
+import { membershipFor } from './policies.js'
 import { getSession, publicUser } from './repository.js'
 
 export function optionalAuth(req, res, next) {
@@ -26,14 +27,14 @@ export function requireCandidate(req, res, next) {
   next()
 }
 
-export function requireOrgRole(allowedRoles) {
+export function requireOrgPermission(canAccess) {
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: 'authentication required' })
-    const membership = req.user.organizations.find(({ id }) => id === req.params.organizationId)
-    if (!membership || !allowedRoles.includes(membership.role)) {
+    const organizationId = req.params.organizationId
+    if (!canAccess(req.user, organizationId)) {
       return res.status(403).json({ error: 'organization access denied' })
     }
-    req.membership = membership
+    req.membership = membershipFor(req.user, organizationId)
     next()
   }
 }

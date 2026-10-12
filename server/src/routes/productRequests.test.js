@@ -6,10 +6,10 @@ import test, { after } from 'node:test'
 
 const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'morrow-product-requests-'))
 process.env.MORROW_DB_PATH = path.join(testDir, 'product-requests.db')
-process.env.MORROW_DEMO_AUTH_ENABLED = '1'
+process.env.MORROW_LOGIN_MAX_ATTEMPTS = '1000'
 process.env.MORROW_CRAWL_SCHEDULE_ENABLED = '0'
 
-const [{ createApp }, { closeDb }, productRepository] = await Promise.all([
+const [{ createApp }, { closeDb, getDb }, productRepository] = await Promise.all([
   import('../app.js'),
   import('../db/index.js'),
   import('../db/productRepository.js'),
@@ -37,12 +37,22 @@ async function request(pathname, { cookie, csrfToken, body, ...options } = {}) {
   })
 }
 
-async function demoLogin(persona) {
-  const response = await request('/api/auth/demo-login', {
+let accountCount = 0
+const PASSWORD = 'correct horse battery'
+
+async function signup(accountType) {
+  accountCount += 1
+  const response = await request('/api/auth/signup', {
     method: 'POST',
-    body: { persona },
+    body: {
+      email: accountType + accountCount + '@example.com',
+      password: PASSWORD,
+      displayName: 'Test ' + accountType,
+      accountType,
+      companyName: accountType === 'employer' ? 'Company ' + accountCount : undefined,
+    },
   })
-  assert.equal(response.status, 200)
+  assert.equal(response.status, 201)
   const data = await response.json()
   return {
     cookie: response.headers.get('set-cookie').split(';', 1)[0],
@@ -57,7 +67,7 @@ async function createProject(employer, overrides = {}) {
     cookie: employer.cookie,
     csrfToken: employer.csrfToken,
     body: {
-      organizationId: 'demo-org',
+      organizationId: employer.user.organizations[0].id,
       title: 'Student dashboard',
       description: 'Build a dashboard for student services.',
       department: 'Information Systems',
@@ -75,11 +85,13 @@ function assertPromise(value, operation) {
 }
 
 test('active product repository exposes one asynchronous storage contract', async () => {
+  const employer = await signup('employer')
+  const candidate = await signup('candidate')
   const created = await assertPromise(
     productRepository.createProductRequest({
-      organizationId: 'demo-org',
-      createdBy: 'demo-employer',
-      companyName: 'Morrow Demo Company',
+      organizationId: employer.user.organizations[0].id,
+      createdBy: employer.user.id,
+      companyName: employer.user.organizations[0].name,
       title: 'Repository contract project',
       description: 'Used to exercise the active repository contract.',
       department: 'Design',
@@ -107,10 +119,10 @@ test('active product repository exposes one asynchronous storage contract', asyn
   assert.equal(updated.title, 'Updated contract project')
 
   const assigned = await assertPromise(
-    productRepository.assignStudent(created.id, 'demo-candidate'),
+    productRepository.assignStudent(created.id, candidate.user.id),
     'assignStudent',
   )
-  assert.equal(assigned.assignedStudents[0].id, 'demo-candidate')
+  assert.equal(assigned.assignedStudents[0].id, candidate.user.id)
 
   const status = await assertPromise(
     productRepository.updateStatus(created.id, 'In Progress'),
@@ -126,8 +138,8 @@ test('active product repository exposes one asynchronous storage contract', asyn
 })
 
 test('public reads expose project data without user contact details', async () => {
-  const employer = await demoLogin('employer')
-  const candidate = await demoLogin('candidate')
+  const employer = await signup('employer')
+  const candidate = await signup('candidate')
   const created = await createProject(employer, {
     title: 'Privacy project',
     department: 'Marketing',
@@ -170,7 +182,7 @@ test('public reads expose project data without user contact details', async () =
 })
 
 test('product request filtering remains storage-neutral', async () => {
-  const employer = await demoLogin('employer')
+  const employer = await signup('employer')
   const created = await createProject(employer, {
     title: 'Filtered project',
     department: 'Marketing',
@@ -191,8 +203,8 @@ test('product request filtering remains storage-neutral', async () => {
 })
 
 test('candidate applications use the signed-in Morrow user and remain idempotent', async () => {
-  const employer = await demoLogin('employer')
-  const candidate = await demoLogin('candidate')
+  const employer = await signup('employer')
+  const candidate = await signup('candidate')
   const created = await createProject(employer, { title: 'Application project' })
 
   const applyResponse = await request('/api/product-requests/' + created.id + '/assign', {
@@ -226,8 +238,8 @@ test('candidate applications use the signed-in Morrow user and remain idempotent
 })
 
 test('applications cannot bypass closed status or an expired deadline', async () => {
-  const employer = await demoLogin('employer')
-  const candidate = await demoLogin('candidate')
+  const employer = await signup('employer')
+  const candidate = await signup('candidate')
 
   const inProgress = await createProject(employer, {
     title: 'Already started',
@@ -255,8 +267,8 @@ test('applications cannot bypass closed status or an expired deadline', async ()
 })
 
 test('publisher updates and status changes require organization access and CSRF', async () => {
-  const employer = await demoLogin('employer')
-  const candidate = await demoLogin('candidate')
+  const employer = await signup('employer')
+  const candidate = await signup('candidate')
   const created = await createProject(employer, { title: 'Managed project' })
 
   const candidateUpdate = await request('/api/product-requests/' + created.id, {
@@ -294,8 +306,8 @@ test('publisher updates and status changes require organization access and CSRF'
 })
 
 test('only an authorized publisher can delete a product request', async () => {
-  const employer = await demoLogin('employer')
-  const candidate = await demoLogin('candidate')
+  const employer = await signup('employer')
+  const candidate = await signup('candidate')
   const created = await createProject(employer, { title: 'Delete project' })
 
   const candidateDelete = await request('/api/product-requests/' + created.id, {
@@ -323,15 +335,15 @@ test('only an authorized publisher can delete a product request', async () => {
 })
 
 test('product request creation requires a publisher membership and CSRF', async () => {
-  const employer = await demoLogin('employer')
-  const candidate = await demoLogin('candidate')
+  const employer = await signup('employer')
+  const candidate = await signup('candidate')
 
   const candidateCreate = await request('/api/product-requests', {
     method: 'POST',
     cookie: candidate.cookie,
     csrfToken: candidate.csrfToken,
     body: {
-      organizationId: 'demo-org',
+      organizationId: employer.user.organizations[0].id,
       title: 'Denied request',
       description: 'Candidates cannot publish.',
       department: 'Information Systems',
@@ -343,11 +355,103 @@ test('product request creation requires a publisher membership and CSRF', async 
     method: 'POST',
     cookie: employer.cookie,
     body: {
-      organizationId: 'demo-org',
+      organizationId: employer.user.organizations[0].id,
       title: 'Denied request',
       description: 'Missing CSRF token.',
       department: 'Information Systems',
     },
   })
   assert.equal(missingCsrf.status, 403)
+})
+
+test('role changes and revocation take effect without granting cross-organization access', async () => {
+  const owner = await signup('employer')
+  const recruiter = await signup('employer')
+  const viewer = await signup('employer')
+  const outsider = await signup('employer')
+  const candidate = await signup('candidate')
+  const organizationId = owner.user.organizations[0].id
+  const db = getDb()
+  db.prepare('INSERT INTO organization_memberships (user_id, organization_id, role) VALUES (?, ?, ?)')
+    .run(recruiter.user.id, organizationId, 'recruiter')
+  db.prepare('INSERT INTO organization_memberships (user_id, organization_id, role) VALUES (?, ?, ?)')
+    .run(viewer.user.id, organizationId, 'viewer')
+
+  const recruitCreated = await request('/api/product-requests', {
+    method: 'POST',
+    cookie: recruiter.cookie,
+    csrfToken: recruiter.csrfToken,
+    body: {
+      organizationId,
+      title: 'Recruiter project',
+      description: 'A scoped project',
+      department: 'Engineering',
+    },
+  })
+  assert.equal(recruitCreated.status, 201)
+  const project = await recruitCreated.json()
+
+  assert.equal((await request('/api/product-requests/' + project.id + '/assign', {
+    method: 'PUT',
+    cookie: candidate.cookie,
+    csrfToken: candidate.csrfToken,
+  })).status, 200)
+
+  for (const actor of [owner, recruiter]) {
+    const detail = await (await request('/api/product-requests/' + project.id, {
+      cookie: actor.cookie,
+    })).json()
+    assert.equal(detail.assignedStudents[0].email, candidate.user.email)
+  }
+  for (const actor of [viewer, outsider, candidate]) {
+    const detail = await (await request('/api/product-requests/' + project.id, {
+      cookie: actor.cookie,
+    })).json()
+    assert.equal('assignedStudents' in detail, false)
+  }
+
+  for (const actor of [viewer, outsider, candidate]) {
+    assert.equal((await request('/api/product-requests/' + project.id, {
+      method: 'PUT',
+      cookie: actor.cookie,
+      csrfToken: actor.csrfToken,
+      body: { title: 'Forbidden' },
+    })).status, 403)
+  }
+  assert.equal((await request('/api/product-requests/' + project.id, {
+    method: 'PUT',
+    cookie: recruiter.cookie,
+    csrfToken: recruiter.csrfToken,
+    body: { title: 'Recruiter updated' },
+  })).status, 200)
+
+  const forgedOrganization = await request('/api/product-requests', {
+    method: 'POST',
+    cookie: outsider.cookie,
+    csrfToken: outsider.csrfToken,
+    body: {
+      organizationId,
+      title: 'Forged organization',
+      description: 'Cannot publish as another employer',
+      department: 'Engineering',
+    },
+  })
+  assert.equal(forgedOrganization.status, 403)
+
+  db.prepare('UPDATE organization_memberships SET role = ? WHERE user_id = ? AND organization_id = ?')
+    .run('viewer', recruiter.user.id, organizationId)
+  assert.equal((await request('/api/product-requests/' + project.id, {
+    method: 'DELETE',
+    cookie: recruiter.cookie,
+    csrfToken: recruiter.csrfToken,
+  })).status, 403)
+
+  db.prepare('DELETE FROM organization_memberships WHERE user_id = ? AND organization_id = ?')
+    .run(viewer.user.id, organizationId)
+  assert.equal((await request('/api/product-requests/' + project.id, {
+    method: 'PUT',
+    cookie: viewer.cookie,
+    csrfToken: viewer.csrfToken,
+    body: { title: 'Revoked' },
+  })).status, 403)
 })

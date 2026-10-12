@@ -237,12 +237,52 @@ test('expired and logged-out sessions are rejected', async () => {
   assert.equal((await me.json()).user, null)
 })
 
-test('ownership policies deny by default', () => {
+test('authorization rules enforce scoped ownership and deny missing access', () => {
   const candidate = { id: 'candidate', isCandidate: true, organizations: [] }
-  const employer = { id: 'employer', isCandidate: false, organizations: [{ id: 'org', role: 'recruiter' }] }
+  const owner = { id: 'owner', isCandidate: false, organizations: [{ id: 'org', role: 'owner' }] }
+  const recruiter = { id: 'recruiter', isCandidate: false, organizations: [{ id: 'org', role: 'recruiter' }] }
+  const viewer = { id: 'viewer', isCandidate: false, organizations: [{ id: 'org', role: 'viewer' }] }
+  const outside = { id: 'outside', isCandidate: false, organizations: [{ id: 'other', role: 'owner' }] }
+  const job = { organizationId: 'org' }
+  const project = { id: 'project', organizationId: 'org', status: 'Open' }
+
   assert.equal(policies.canReadResume(candidate, { userId: 'candidate' }), true)
-  assert.equal(policies.canReadResume(candidate, { userId: 'someone-else' }), false)
-  assert.equal(policies.canEditJob(employer, { organizationId: 'org' }), true)
-  assert.equal(policies.canEditJob(employer, { organizationId: 'other-org' }), false)
-  assert.equal(policies.canManageOrganization(employer, 'org'), false)
+  assert.equal(policies.canReadResume(candidate, { userId: 'elsewhere' }), false)
+  assert.equal(policies.canReadResume(owner, { userId: 'owner' }), false)
+
+  for (const actor of [owner, recruiter, viewer]) {
+    assert.equal(policies.canBrowseCandidates(actor, 'org'), true)
+    assert.equal(policies.canReadJobDraft(actor, job), true)
+  }
+  for (const actor of [owner, recruiter]) {
+    assert.equal(policies.canManageJobs(actor, 'org'), true)
+    assert.equal(policies.canEditJobDraft(actor, job), true)
+    assert.equal(policies.canManageProductRequest(actor, project), true)
+    assert.equal(policies.canViewApplicants(actor, project), true)
+  }
+  for (const actor of [candidate, viewer, outside, null]) {
+    assert.equal(policies.canManageJobs(actor, 'org'), false)
+    assert.equal(policies.canEditJobDraft(actor, job), false)
+    assert.equal(policies.canManageProductRequest(actor, project), false)
+    assert.equal(policies.canViewApplicants(actor, project), false)
+  }
+  assert.equal(policies.canManageOrganization(owner, 'org'), true)
+  assert.equal(policies.canManageMembers(owner, { id: 'org' }), true)
+  assert.equal(policies.canManageOrganization(recruiter, 'org'), false)
+  assert.equal(policies.canManageMembers(viewer, 'org'), false)
+  assert.equal(policies.canReadJobDraft(outside, job), false)
+  assert.equal(policies.canBrowseCandidates(candidate, 'org'), false)
+  assert.equal(policies.canReadJobDraft(owner, { organizationId: 'other' }), false)
+  assert.equal(policies.canEditJobDraft(owner, { organizationId: 'other' }), false)
+  assert.equal(policies.canViewApplicants(owner, { ...project, organizationId: 'other' }), false)
+
+  assert.equal(policies.canApplyToProject(candidate, project), true)
+  assert.equal(policies.canApplyToProject(owner, project), false)
+  assert.equal(policies.canApplyToProject(candidate, { ...project, status: 'Completed' }), false)
+  assert.equal(policies.canApplyToProject(candidate, { ...project, deadline: '2000-01-01' }), false)
+  for (const actor of [candidate, owner, null]) {
+    assert.equal(policies.canEditJobDraft(actor, null), false)
+    assert.equal(policies.canManageProductRequest(actor, null), false)
+    assert.equal(policies.canApplyToProject(actor, null), false)
+  }
 })

@@ -1,5 +1,5 @@
 import express from 'express'
-import { membershipFor } from '../auth/policies.js'
+import { canApplyToProject, canManageJobs, canManageProductRequest, canViewApplicants, membershipFor } from '../auth/policies.js'
 import { requireAuth, requireCandidate, requireCsrf } from '../auth/middleware.js'
 import {
   assignStudent,
@@ -12,7 +12,6 @@ import {
 } from '../db/productRepository.js'
 
 const VALID_STATUSES = new Set(['Open', 'In Progress', 'Completed'])
-const PUBLISHER_ROLES = new Set(['owner', 'recruiter'])
 
 export const productRouter = express.Router()
 
@@ -21,8 +20,7 @@ const asyncRoute = (handler) => (req, res, next) => {
 }
 
 function publisherMembership(user, organizationId) {
-  const membership = membershipFor(user, organizationId)
-  return membership && PUBLISHER_ROLES.has(membership.role) ? membership : null
+  return canManageJobs(user, organizationId) ? membershipFor(user, organizationId) : null
 }
 
 function publicRequestView(request, user = null) {
@@ -49,7 +47,7 @@ function publicRequestView(request, user = null) {
 
 function detailRequestView(request, user) {
   const view = publicRequestView(request, user)
-  if (!publisherMembership(user, request.organizationId)) return view
+  if (!canViewApplicants(user, request)) return view
 
   return {
     ...view,
@@ -57,24 +55,16 @@ function detailRequestView(request, user) {
   }
 }
 
-function applicationsAreOpen(request) {
-  if (request.status !== 'Open') return false
-  if (!request.deadline) return true
-
-  const deadlineDate = String(request.deadline).slice(0, 10)
-  const today = new Date().toISOString().slice(0, 10)
-  return deadlineDate >= today
-}
-
 const requireRequestPublisher = asyncRoute(async (req, res, next) => {
   const request = await getProductRequestById(req.params.id)
   if (!request) return res.status(404).json({ error: 'product request not found' })
 
-  const membership = publisherMembership(req.user, request.organizationId)
-  if (!membership) return res.status(403).json({ error: 'organization access denied' })
+  if (!canManageProductRequest(req.user, request)) {
+    return res.status(403).json({ error: 'organization access denied' })
+  }
 
   req.productRequest = request
-  req.membership = membership
+  req.membership = membershipFor(req.user, request.organizationId)
   next()
 })
 
@@ -152,7 +142,7 @@ productRouter.put(
   asyncRoute(async (req, res) => {
     const request = await getProductRequestById(req.params.id)
     if (!request) return res.status(404).json({ error: 'product request not found' })
-    if (!applicationsAreOpen(request)) {
+    if (!canApplyToProject(req.user, request)) {
       return res.status(409).json({ error: 'applications are closed' })
     }
 

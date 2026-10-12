@@ -1,8 +1,8 @@
 import crypto from 'node:crypto'
 import express from 'express'
 import { getDb, nowIso } from '../db/index.js'
-import { requireAuth, requireCandidate, requireCsrf, requireOrgRole } from '../auth/middleware.js'
-import { canEditJob } from '../auth/policies.js'
+import { requireAuth, requireCandidate, requireCsrf, requireOrgPermission } from '../auth/middleware.js'
+import { canBrowseCandidates, canEditJobDraft, canManageJobs } from '../auth/policies.js'
 
 export const workspaceRouter = express.Router()
 
@@ -30,7 +30,7 @@ workspaceRouter.put('/candidate/resume', requireCandidate, requireCsrf, (req, re
 
 workspaceRouter.get(
   '/organizations/:organizationId/candidates',
-  requireOrgRole(['owner', 'recruiter', 'viewer']),
+  requireOrgPermission(canBrowseCandidates),
   (req, res) => {
     // The product still uses fictional profiles; the important part here is that
     // access crosses a real organization authorization boundary.
@@ -40,7 +40,7 @@ workspaceRouter.get(
 
 workspaceRouter.post(
   '/organizations/:organizationId/jobs',
-  requireOrgRole(['owner', 'recruiter']),
+  requireOrgPermission(canManageJobs),
   requireCsrf,
   (req, res) => {
     const draft = req.body?.draft
@@ -68,7 +68,7 @@ workspaceRouter.patch('/organizations/:organizationId/jobs/:jobId', requireAuth,
     return res.status(404).json({ error: 'job draft not found' })
   }
   const job = { organizationId: row.organization_id }
-  if (!canEditJob(req.user, job)) return res.status(403).json({ error: 'organization access denied' })
+  if (!canEditJobDraft(req.user, job)) return res.status(403).json({ error: 'organization access denied' })
 
   const draft = req.body?.draft
   if (!draft || typeof draft !== 'object' || Array.isArray(draft)) {
