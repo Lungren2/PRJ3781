@@ -5,11 +5,21 @@ export function membershipFor(user, organizationId) {
 }
 
 export function canReadResume(user, resume) {
-  return Boolean(user?.isCandidate && resume?.userId === user.id)
+  return Boolean(user?.isCandidate && resume?.user && String(resume.user) === user.id)
 }
 
 export function canEditJob(user, job) {
   return ['owner', 'recruiter'].includes(membershipFor(user, job?.organizationId)?.role)
+}
+
+// Owners and recruiters of the posting organization may edit, close or delete a
+// product request; any member may see who applied.
+export function canManageProductRequest(user, organizationId) {
+  return ['owner', 'recruiter'].includes(membershipFor(user, organizationId)?.role)
+}
+
+export function canViewProductApplicants(user, organizationId) {
+  return EMPLOYER_ROLES.includes(membershipFor(user, organizationId)?.role)
 }
 
 export function canBrowseCandidates(user, organizationId) {

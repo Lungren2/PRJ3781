@@ -10,13 +10,14 @@ import {
   CoursesPage,
   HackathonsPage,
   JobCrawlerPage,
-  PortfolioBuilderPage,
   ProjectsPage,
 } from './pages/DiscoveryPages.jsx'
 import { AccessDeniedPage, AuthPage, NotFoundPage } from './pages/UtilityPages.jsx'
 import { ToastContext } from './components/ToastContext.jsx'
 import { AuthProvider, RequireCandidate, RequireEmployer } from './components/AuthContext.jsx'
 import ProjectDetailsPage from "./pages/ProjectDetailsPage.jsx"
+import JobDetailsPage from "./pages/JobDetailsPage.jsx"
+import { PortfolioBuilderPage, PublicPortfolioPage } from "./pages/PortfolioPages.jsx"
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -39,6 +40,7 @@ function AppRoutes() {
         <Route path="jobs/part-time" element={<JobsPage preset="Part-time" />} />
         <Route path="jobs/internships" element={<JobsPage preset="Internship" />} />
         <Route path="jobs/entry-level" element={<JobsPage preset="Entry level" />} />
+        <Route path="jobs/posted/:id" element={<JobDetailsPage />} />
         <Route path="jobs/recommended" element={<RequireCandidate><RecommendedJobsPage /></RequireCandidate>} />
         <Route path="employers" element={<EmployerHubPage />} />
         <Route path="employers/candidates" element={<RequireEmployer><BrowseCandidatesPage /></RequireEmployer>} />
@@ -47,7 +49,8 @@ function AppRoutes() {
         <Route path="discover/jobs" element={<JobCrawlerPage />} />
         <Route path="discover/hackathons" element={<HackathonsPage />} />
         <Route path="discover/certifications" element={<CertificationsPage />} />
-        <Route path="portfolio-builder" element={<PortfolioBuilderPage />} />
+        <Route path="portfolio-builder" element={<RequireCandidate><PortfolioBuilderPage /></RequireCandidate>} />
+        <Route path="portfolio/:slug" element={<PublicPortfolioPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="projects/:id" element={<ProjectDetailsPage />} />
         <Route path="auth" element={<AuthPage />} />

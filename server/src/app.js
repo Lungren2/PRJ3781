@@ -1,17 +1,16 @@
 import express from 'express'
 import cors from 'cors'
 import { config } from './config.js'
-import { getDb } from './db/index.js'
 import { optionalAuth } from './auth/middleware.js'
-import { removeLegacyDemoAccounts } from './auth/repository.js'
 import { createAuthRouter } from './routes/auth.js'
 import { router as certificationsRouter } from './routes/certifications.js'
 import { workspaceRouter } from './routes/workspaces.js'
+import { resumeRouter } from './routes/resume.js'
+import { productRouter } from './routes/productRequests.js'
+import { jobsRouter } from './routes/jobs.js'
+import { portfolioRouter } from './routes/portfolio.js'
 
 export function createApp() {
-  getDb()
-  removeLegacyDemoAccounts()
-
   const app = express()
   app.disable('x-powered-by')
   app.use(cors({
@@ -25,11 +24,16 @@ export function createApp() {
   app.use(express.json({ limit: '32kb' }))
   app.use(optionalAuth)
   app.use('/api/auth', createAuthRouter())
+  app.use('/api', resumeRouter)
   app.use('/api', workspaceRouter)
   app.use('/api', certificationsRouter)
+  app.use('/api', productRouter)
+  app.use('/api', jobsRouter)
+  app.use('/api', portfolioRouter)
 
   app.use((error, req, res, next) => {
     console.error('[api]', error.message)
+    if (res.headersSent) return res.destroy()
     res.status(500).json({ error: 'internal error' })
   })
   return app

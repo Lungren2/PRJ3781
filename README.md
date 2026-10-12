@@ -32,12 +32,14 @@ npm run crawl      # populate the database (first run takes a few minutes)
 
 Create an account from the **Sign up** tab on `/auth`. Choose **Candidate** to
 get a candidate workspace, or **Employer** to create a company organization that
-you own. Passwords are stored as scrypt hashes in SQLite, and the browser
-receives an opaque, `HttpOnly` session cookie.
+you own. Accounts, sessions, organizations, job drafts and resumes are stored in
+MongoDB (`MONGODB_URI` in `server/.env`). Passwords are stored as scrypt hashes,
+and the browser receives an opaque, `HttpOnly` session cookie.
 
-Candidate resume and recommendation routes and employer candidate/job routes
-enforce the account type. Resume and job drafts are saved locally to SQLite but
-are not uploaded or published externally.
+Candidates upload a resume (PDF, DOC or DOCX, up to 10MB, stored in GridFS) and
+answer a few questions on `/candidates/resume`. Employers see a candidate on
+`/employers/candidates` only after that candidate ticks "Let employers see my
+profile". Job drafts are saved but not published externally.
 
 ## Run locally with Docker
 

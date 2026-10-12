@@ -16,12 +16,12 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const MIN_PASSWORD_LENGTH = 8
 const MAX_PASSWORD_LENGTH = 128
 
-function startSession(req, res, user) {
+async function startSession(req, res, user) {
   // Re-authentication always replaces the browser's previous session.
-  if (req.auth?.sessionToken) deleteSession(req.auth.sessionToken)
-  const session = createSession(user.id)
+  if (req.auth?.sessionToken) await deleteSession(req.auth.sessionToken)
+  const session = await createSession(user._id)
   setSessionCookie(res, session.token, session.expiresAt)
-  return { user: publicUser(user), csrfToken: session.csrfToken }
+  return { user: await publicUser(user), csrfToken: session.csrfToken }
 }
 
 const text = (value) => (typeof value === 'string' ? value.trim() : '')
@@ -59,34 +59,42 @@ export function createAuthRouter() {
     res.json({ user: req.user, csrfToken: req.auth?.csrfToken ?? null })
   })
 
-  authRouter.post('/signup', loginRateLimit, (req, res) => {
+  authRouter.post('/signup', loginRateLimit, async (req, res, next) => {
     const { signup, error } = readSignup(req.body)
     if (error) return res.status(400).json({ error })
     try {
-      const user = createAccount(signup)
+      const user = await createAccount(signup)
       clearLoginAttempts(req)
-      return res.status(201).json(startSession(req, res, user))
+      return res.status(201).json(await startSession(req, res, user))
     } catch (createError) {
       if (createError instanceof EmailTakenError) {
         return res.status(409).json({ error: 'an account with this email already exists' })
       }
-      throw createError
+      next(createError)
     }
   })
 
-  authRouter.post('/login', loginRateLimit, (req, res) => {
-    const user = findUserByEmail(req.body?.email)
-    if (!user || !verifyPassword(req.body?.password, user.password_hash)) {
-      return res.status(401).json({ error: 'invalid email or password' })
+  authRouter.post('/login', loginRateLimit, async (req, res, next) => {
+    try {
+      const user = await findUserByEmail(req.body?.email)
+      if (!user || !verifyPassword(req.body?.password, user.passwordHash)) {
+        return res.status(401).json({ error: 'invalid email or password' })
+      }
+      clearLoginAttempts(req)
+      return res.json(await startSession(req, res, user))
+    } catch (error) {
+      next(error)
     }
-    clearLoginAttempts(req)
-    return res.json(startSession(req, res, user))
   })
 
-  authRouter.post('/logout', requireCsrf, (req, res) => {
-    deleteSession(req.auth?.sessionToken)
-    clearSessionCookie(res)
-    res.status(204).end()
+  authRouter.post('/logout', requireCsrf, async (req, res, next) => {
+    try {
+      await deleteSession(req.auth?.sessionToken)
+      clearSessionCookie(res)
+      res.status(204).end()
+    } catch (error) {
+      next(error)
+    }
   })
 
   return authRouter

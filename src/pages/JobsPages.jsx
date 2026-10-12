@@ -9,10 +9,10 @@ import {
   SearchPanel,
   StatusPill,
 } from '../components/ProductUI.jsx'
-import { getJobs } from '../data/jobs.js'
+import { getAllJobs } from '../data/jobs.js'
 import { useToast } from '../components/ToastContext.jsx'
 
-const jobTypes = ['All', 'Part-time', 'Internship', 'Entry level']
+const jobTypes = ['All', 'Part-time', 'Internship', 'Entry level', 'Project']
 
 export function JobsPage({ preset = 'All' }) {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -24,9 +24,9 @@ export function JobsPage({ preset = 'All' }) {
   const [jobs, setJobs] = useState([])
   const toast = useToast()
 
-  //Load the jobs from jobs.json
+  //Load jobs posted on Morrow and the crawled listings from jobs.json
   useEffect(() => {
-    getJobs().then(setJobs)
+    getAllJobs().then(setJobs)
   }, [])
 
   const results = useMemo(() => {
@@ -54,7 +54,7 @@ export function JobsPage({ preset = 'All' }) {
       <PageIntro
         eyebrow="Opportunity search"
         title={title}
-        copy="Search realistic sample listings and try the filters that will later connect to the live opportunity database."
+        copy="Search jobs posted by employers on Morrow alongside listings collected from public job sites."
       >
         <Link className="button button--outline" to="/jobs/recommended">
           See recommended jobs
@@ -102,7 +102,7 @@ export function JobsPage({ preset = 'All' }) {
         </SearchPanel>
 
         <PreviewNotice>
-          Search and filters work against live crawled listings from jobs.json.
+          Jobs and short projects posted on Morrow can be applied to here. Other listings were collected from public job sites and open on the original site.
         </PreviewNotice>
 
         <section className="results-section" aria-labelledby="job-results-title">
@@ -130,9 +130,9 @@ export function JobsPage({ preset = 'All' }) {
 export function RecommendedJobsPage() {
   const [jobs, setJobs] = useState([])
 
-  //Load the jobs from jobs.json
+  //Load jobs posted on Morrow and the crawled listings from jobs.json
   useEffect(() => {
-    getJobs().then(setJobs)
+    getAllJobs().then(setJobs)
   }, [])
 
   return (

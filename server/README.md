@@ -138,8 +138,29 @@ provider-neutral account surface:
 
 - `GET /api/auth/me`
 - `POST /api/auth/signup`, `POST /api/auth/login`, `POST /api/auth/logout`
-- `GET`/`PUT /api/candidate/resume`
-- `GET /api/organizations/:organizationId/candidates`
+- `GET`/`PUT /api/candidate/resume` — profile answers and `visibleToEmployers`
+- `PUT`/`GET`/`DELETE /api/candidate/resume/file` — the resume file (raw body,
+  `x-file-name` header; PDF, DOC or DOCX up to 10MB, checked by content)
+- `GET /api/organizations/:organizationId/candidates?q=&workSetup=` — only
+  candidates who opted in
+- `GET /api/organizations/:organizationId/candidates/:candidateId/resume`
+- `GET`/`POST /api/organizations/:organizationId/jobs` — list the organization's
+  jobs (any status, with applicants) or create one (`{ job, publish? }`)
+- `PATCH`/`DELETE /api/organizations/:organizationId/jobs/:jobId`
+- `POST /api/organizations/:organizationId/jobs/:jobId/publish` and `/close` —
+  publishing needs a title, location and description
+- `GET /api/organizations/:organizationId/jobs/:jobId/applicants/:userId/resume`
+- `GET /api/jobs`, `GET /api/jobs/:id` — public, published jobs only
+- `POST`/`DELETE /api/jobs/:id/apply` — the logged-in candidate applies or withdraws
+- `GET /api/product-requests[/:id]` (public), `POST /api/product-requests`,
+  `PUT`/`DELETE /api/product-requests/:id`, `PUT /api/product-requests/:id/status`,
+  `POST`/`DELETE /api/product-requests/:id/apply`
+- `GET /api/organizations/:organizationId/product-requests` and
+  `PUT .../product-requests/:id/applicants/:userId` (`applied`, `selected`,
+  `completed`, `declined`) — completed projects appear on the candidate's portfolio
+- `GET`/`PUT /api/candidate/portfolio` — the candidate's portfolio (private until
+  `published` is true)
+- `GET /api/portfolios/:slug` — public, published portfolios only
 - `POST /api/organizations/:organizationId/jobs`
 - `PATCH /api/organizations/:organizationId/jobs/:jobId`
 
@@ -149,5 +170,10 @@ provider-neutral account surface:
 owner. Duplicate emails return `409`.
 
 Authenticated mutations require the session's `x-csrf-token`. Organization
-access is derived from membership rows rather than a global user role.
+access is derived from organization membership rather than a global user role.
+
+Accounts, sessions, organizations, job drafts and resumes are stored in MongoDB
+(see `src/models/`); SQLite is now only used by the certifications crawler.
+`npm run test:server` starts a throwaway in-memory MongoDB, so it does not touch
+the real database.
 

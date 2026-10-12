@@ -2016,12 +2016,20 @@ p {
 }
 
 .candidate-row__details,
-.candidate-row > .text-action {
+.candidate-row > .text-action,
+.candidate-row__actions {
   grid-column: 2;
 }
 
-.candidate-row > .text-action {
+.candidate-row > .text-action,
+.candidate-row__actions {
   justify-self: start;
+}
+
+.candidate-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
 }
 
 .job-preview {
@@ -2788,11 +2796,13 @@ p {
   }
 
   .candidate-row__details,
-  .candidate-row > .text-action {
+  .candidate-row > .text-action,
+  .candidate-row__actions {
     grid-column: auto;
   }
 
-  .candidate-row > .text-action {
+  .candidate-row > .text-action,
+  .candidate-row__actions {
     justify-self: end;
   }
 
@@ -3658,4 +3668,241 @@ p {
 .no-applications {
   color: #6b7280;
   margin: 0;
+}
+/* Employer job list (Post a job) */
+.employer-jobs {
+  display: grid;
+  gap: var(--space-md);
+  margin-top: var(--space-2xl);
+  margin-bottom: var(--space-2xl);
+}
+
+.employer-job {
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-lg) 0;
+  border-top: 0.0625rem solid var(--color-line);
+}
+
+.employer-job:last-child {
+  border-bottom: 0.0625rem solid var(--color-line);
+}
+
+.employer-job__summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.employer-job__summary p {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
+}
+
+.employer-job__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+}
+
+.job-preview__description,
+.job-detail__description {
+  white-space: pre-line;
+}
+
+/* Portfolio builder and public portfolio */
+.portfolio-hint {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.portfolio-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.portfolio-links a,
+.portfolio-entry a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--color-brand-strong);
+}
+
+.portfolio-about,
+.portfolio-entry__text {
+  white-space: pre-line;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.portfolio-verified {
+  display: grid;
+  gap: 0.25rem;
+  padding-top: var(--space-sm);
+}
+
+.portfolio-verified p {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.portfolio-block {
+  display: grid;
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+}
+
+.portfolio-block h4 {
+  color: var(--color-coral);
+  font-size: 0.6875rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.portfolio-entry {
+  display: grid;
+  gap: var(--space-xs);
+  padding-top: var(--space-md);
+  border-top: 0.0625rem solid var(--color-line);
+}
+
+.portfolio-entry__head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.portfolio-entry__head span,
+.portfolio-entry__meta {
+  color: var(--color-muted);
+  font-size: 0.75rem;
+}
+
+.portfolio-entry-editor {
+  display: grid;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border: 0.0625rem solid var(--color-line);
+  background: var(--color-white);
+}
+
+.portfolio-entry-editor.is-hidden {
+  opacity: 0.6;
+}
+
+.portfolio-entry-editor__bar {
+  display: flex;
+  gap: var(--space-xs);
+}
+
+.portfolio-entry-editor__bar select {
+  flex: 1;
+  min-width: 0;
+}
+
+.portfolio-entry-editor__pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-sm);
+}
+
+.portfolio-entry-add,
+.portfolio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.portfolio-slug {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.portfolio-slug small {
+  color: var(--color-muted);
+}
+
+.portfolio-slug input {
+  flex: 1;
+  min-width: 0;
+}
+
+.portfolio-controls__link a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.portfolio-controls__link .icon-button {
+  margin-left: auto;
+}
+
+.portfolio-public {
+  display: grid;
+  gap: var(--space-md);
+  max-width: 52rem;
+  margin-top: var(--space-2xl);
+  margin-bottom: var(--space-2xl);
+}
+
+.portfolio-public .portfolio-actions {
+  justify-content: flex-end;
+}
+
+/* "Download as PDF" prints only the portfolio. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .portfolio-print,
+  .portfolio-print * {
+    visibility: visible;
+  }
+
+  .portfolio-print {
+    position: absolute;
+    inset: 0 0 auto;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .portfolio-print .portfolio-preview__browser {
+    display: none;
+  }
+
+  .portfolio-print .portfolio-preview__body {
+    min-height: 0;
+  }
+
+  .portfolio-print a {
+    color: inherit;
+  }
+
+  .portfolio-print .portfolio-preview__section {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+.project-application-state {
+  display: grid;
+  gap: var(--space-sm);
+  justify-items: start;
+}
+
+.project-application-state span,
+.applicant-status {
+  color: var(--color-muted);
+  font-size: 0.8125rem;
 }

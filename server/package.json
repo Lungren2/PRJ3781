@@ -23,5 +23,8 @@
     "mongoose": "^8.24.4",
     "node-cron": "^3.0.3",
     "robots-parser": "^3.0.1"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^10.4.3"
   }
 }

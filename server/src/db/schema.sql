@@ -1,76 +1,8 @@
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
 
--- Accounts. Passwords are stored as scrypt hashes; see auth/passwords.js.
-CREATE TABLE IF NOT EXISTS users (
-  id            TEXT PRIMARY KEY,
-  email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
-  password_hash TEXT,
-  display_name  TEXT NOT NULL,
-  status        TEXT NOT NULL DEFAULT 'active',
-  created_at    TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS candidate_profiles (
-  user_id     TEXT PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
-  created_at  TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS auth_identities (
-  id            TEXT PRIMARY KEY,
-  user_id       TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-  provider      TEXT NOT NULL,
-  issuer        TEXT NOT NULL,
-  subject       TEXT NOT NULL,
-  tenant_id     TEXT,
-  object_id     TEXT,
-  created_at    TEXT NOT NULL,
-  last_login_at TEXT NOT NULL,
-  UNIQUE (provider, issuer, subject)
-);
-
-CREATE INDEX IF NOT EXISTS idx_auth_identities_user ON auth_identities (user_id);
-
-CREATE TABLE IF NOT EXISTS organizations (
-  id          TEXT PRIMARY KEY,
-  name        TEXT NOT NULL,
-  created_at  TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS organization_memberships (
-  user_id         TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-  organization_id TEXT NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
-  role            TEXT NOT NULL CHECK (role IN ('owner', 'recruiter', 'viewer')),
-  PRIMARY KEY (user_id, organization_id)
-);
-
-CREATE TABLE IF NOT EXISTS sessions (
-  id          TEXT PRIMARY KEY,
-  user_id     TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-  csrf_token  TEXT NOT NULL,
-  created_at  TEXT NOT NULL,
-  expires_at  TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (user_id);
-CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions (expires_at);
-
-CREATE TABLE IF NOT EXISTS resumes (
-  user_id     TEXT PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
-  draft       TEXT NOT NULL DEFAULT '{}',
-  updated_at  TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS job_drafts (
-  id              TEXT PRIMARY KEY,
-  organization_id TEXT NOT NULL REFERENCES organizations (id) ON DELETE CASCADE,
-  created_by      TEXT NOT NULL REFERENCES users (id),
-  draft           TEXT NOT NULL DEFAULT '{}',
-  updated_at      TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_job_drafts_org ON job_drafts (organization_id, updated_at DESC);
-
+-- SQLite only backs the certifications crawler. Accounts, sessions, organizations,
+-- job drafts and resumes live in MongoDB (see models/).
 CREATE TABLE IF NOT EXISTS certifications (
   id            INTEGER PRIMARY KEY,
   provider      TEXT NOT NULL,

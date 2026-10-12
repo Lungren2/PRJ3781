@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -115,17 +115,126 @@ export function CandidateHubPage() {
   )
 }
 
+const MAX_RESUME_BYTES = 10 * 1024 * 1024
+const RESUME_TYPES = {
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+}
+const PROFILE_FIELDS = ['studyLevel', 'institution', 'fieldOfStudy', 'graduationYear', 'roles', 'workSetup']
+const EMPTY_PROFILE = {
+  studyLevel: '',
+  institution: '',
+  fieldOfStudy: '',
+  graduationYear: '',
+  roles: '',
+  workSetup: 'Flexible',
+}
+
+function resumeTypeFor(file) {
+  return RESUME_TYPES[file.name.split('.').pop()?.toLowerCase()] ?? null
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function formatDate(value) {
+  return value ? new Date(value).toLocaleString() : ''
+}
+
 export function ResumePage() {
-  const [fileName, setFileName] = useState('')
+  const [profile, setProfile] = useState(EMPTY_PROFILE)
+  const [visibleToEmployers, setVisibleToEmployers] = useState(false)
+  const [savedFile, setSavedFile] = useState(null)
+  const [pendingFile, setPendingFile] = useState(null)
+  const [updatedAt, setUpdatedAt] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const toast = useToast()
   const { apiFetch } = useAuth()
 
-  const setLocalFile = (file) => {
-    if (!file) return
-    setFileName(file.name)
-    toast(`${file.name} is selected locally. It has not been uploaded.`)
+  const applyResume = (data) => {
+    setProfile({ ...EMPTY_PROFILE, ...data.profile })
+    setVisibleToEmployers(Boolean(data.visibleToEmployers))
+    setSavedFile(data.file)
+    setUpdatedAt(data.updatedAt)
   }
+
+  // Load the logged-in candidate's saved resume once when the page opens.
+  useEffect(() => {
+    let active = true
+    apiFetch('/api/candidate/resume')
+      .then((data) => { if (active) applyResume(data) })
+      .catch((error) => { if (active) toast(`Could not load your saved resume: ${error.message}`) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const selectFile = (file) => {
+    if (!file) return
+    if (!resumeTypeFor(file)) {
+      toast('Please choose a PDF, DOC, or DOCX file.')
+      return
+    }
+    if (file.size > MAX_RESUME_BYTES) {
+      toast('Your resume must be 10MB or smaller.')
+      return
+    }
+    setPendingFile(file)
+  }
+
+  const removeFile = async () => {
+    if (pendingFile) {
+      setPendingFile(null)
+      return
+    }
+    try {
+      await apiFetch('/api/candidate/resume/file', { method: 'DELETE' })
+      setSavedFile(null)
+      toast('Resume file removed.')
+    } catch (error) {
+      toast(`Could not remove resume file: ${error.message}`)
+    }
+  }
+
+  const save = async (event) => {
+    event.preventDefault()
+    setSaving(true)
+    try {
+      if (pendingFile) {
+        applyResume(await apiFetch('/api/candidate/resume/file', {
+          method: 'PUT',
+          headers: {
+            'content-type': resumeTypeFor(pendingFile),
+            'x-file-name': encodeURIComponent(pendingFile.name),
+          },
+          body: pendingFile,
+        }))
+        setPendingFile(null)
+      }
+      applyResume(await apiFetch('/api/candidate/resume', {
+        method: 'PUT',
+        body: JSON.stringify({ profile, visibleToEmployers }),
+      }))
+      toast('Resume saved to your account.')
+    } catch (error) {
+      toast(`Could not save resume: ${error.message}`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const updateField = (event) => {
+    const { name, value } = event.target
+    setProfile((current) => ({ ...current, [name]: value }))
+  }
+  const shownFile = pendingFile ? { fileName: pendingFile.name, size: pendingFile.size } : savedFile
+  const answered = PROFILE_FIELDS.filter((field) => profile[field]).length
+  const readiness = Math.round((((shownFile ? 1 : 0) + answered) / (PROFILE_FIELDS.length + 1)) * 100)
+  const currentStep = !shownFile ? 1 : answered < PROFILE_FIELDS.length ? 2 : 3
 
   return (
     <main id="main-content" className="product-page">
@@ -134,56 +243,42 @@ export function ResumePage() {
         title="Make your resume work harder."
         copy="Add a resume and a little context. Future matching will use this to surface more relevant roles."
       >
-        <StatusPill tone="blue">Frontend-only flow</StatusPill>
+        <StatusPill tone="blue">{updatedAt ? `Last saved ${formatDate(updatedAt)}` : 'Not saved yet'}</StatusPill>
       </PageIntro>
 
       <div className="page-container resume-layout">
         <aside className="resume-steps" aria-label="Resume setup steps">
           <p className="eyebrow">Setup progress</p>
-          <ProgressBar value={fileName ? 50 : 20} label="Profile readiness" />
+          <ProgressBar value={readiness} label="Profile readiness" />
           <ol>
-            <li className="is-current">
+            <li className={currentStep === 1 ? 'is-current' : undefined}>
               <span>1</span>
               <div>
                 <strong>Resume</strong>
-                <small>Select a local file</small>
+                <small>Upload a PDF or Word file</small>
               </div>
             </li>
-            <li>
+            <li className={currentStep === 2 ? 'is-current' : undefined}>
               <span>2</span>
               <div>
                 <strong>Quick questions</strong>
                 <small>Add preferences</small>
               </div>
             </li>
-            <li>
+            <li className={currentStep === 3 ? 'is-current' : undefined}>
               <span>3</span>
               <div>
                 <strong>Review</strong>
-                <small>Preview your profile</small>
+                <small>Check and save your profile</small>
               </div>
             </li>
           </ol>
         </aside>
 
-        <form
-          className="resume-form form-surface"
-          onSubmit={async (event) => {
-            event.preventDefault()
-            const values = Object.fromEntries(new FormData(event.currentTarget))
-            delete values.resume
-            try {
-              await apiFetch('/api/candidate/resume', {
-                method: 'PUT',
-                body: JSON.stringify({ draft: { ...values, fileName } }),
-              })
-              toast('Resume profile draft saved to your account.')
-            } catch (error) {
-              toast(`Could not save resume draft: ${error.message}`)
-            }
-          }}
-        >
-          <PreviewNotice>The selected file stays in the browser. Its filename and your answers are saved to your account.</PreviewNotice>
+        <form className="resume-form form-surface" onSubmit={save} aria-busy={loading || saving}>
+          <PreviewNotice>
+            Your resume and answers are saved to your candidate account. Employers can only see them if you allow it in step 3.
+          </PreviewNotice>
           <section aria-labelledby="resume-upload-title">
             <div className="form-section-heading">
               <span className="step-icon">
@@ -195,7 +290,7 @@ export function ResumePage() {
               </div>
             </div>
             <div
-              className={`drop-zone${dragActive ? ' drop-zone--active' : ''}${fileName ? ' drop-zone--selected' : ''}`}
+              className={`drop-zone${dragActive ? ' drop-zone--active' : ''}${shownFile ? ' drop-zone--selected' : ''}`}
               onDragEnter={(event) => {
                 event.preventDefault()
                 setDragActive(true)
@@ -205,31 +300,47 @@ export function ResumePage() {
               onDrop={(event) => {
                 event.preventDefault()
                 setDragActive(false)
-                setLocalFile(event.dataTransfer.files[0])
+                selectFile(event.dataTransfer.files[0])
               }}
             >
-              {fileName ? (
+              {shownFile ? (
                 <Check size={28} aria-hidden="true" />
               ) : (
                 <UploadCloud size={28} aria-hidden="true" />
               )}
-              <h3>{fileName || 'Drag and drop your resume here'}</h3>
+              <h3>{loading ? 'Loading your resume…' : shownFile?.fileName || 'Drag and drop your resume here'}</h3>
               <p>
-                {fileName
-                  ? 'Selected locally - not uploaded'
-                  : 'PDF or DOCX, up to 10MB in the future experience'}
+                {pendingFile
+                  ? `${formatBytes(pendingFile.size)} - uploads when you save`
+                  : savedFile
+                    ? `${formatBytes(savedFile.size)} - uploaded ${formatDate(savedFile.uploadedAt)}`
+                    : 'PDF, DOC, or DOCX, up to 10MB'}
               </p>
               <label className="button button--outline" htmlFor="resume-file">
-                {fileName ? 'Choose another file' : 'Choose a file'}
+                {shownFile ? 'Choose another file' : 'Choose a file'}
               </label>
               <input
                 className="sr-only"
                 id="resume-file"
-                name="resume"
                 type="file"
                 accept=".pdf,.doc,.docx"
-                onChange={(event) => setLocalFile(event.target.files[0])}
+                onChange={(event) => {
+                  selectFile(event.target.files[0])
+                  event.target.value = ''
+                }}
               />
+              {shownFile && (
+                <div className="form-actions">
+                  {savedFile && !pendingFile && (
+                    <a className="button button--outline" href="/api/candidate/resume/file">
+                      Download
+                    </a>
+                  )}
+                  <button className="button button--outline" type="button" onClick={removeFile}>
+                    {pendingFile ? 'Cancel selection' : 'Remove file'}
+                  </button>
+                </div>
+              )}
             </div>
           </section>
 
@@ -246,7 +357,7 @@ export function ResumePage() {
             <div className="form-grid">
               <label className="form-field">
                 <span>Current study level</span>
-                <select name="studyLevel" defaultValue="">
+                <select name="studyLevel" value={profile.studyLevel} onChange={updateField}>
                   <option value="" disabled>
                     Select a level
                   </option>
@@ -257,15 +368,29 @@ export function ResumePage() {
               </label>
               <label className="form-field">
                 <span>Institution</span>
-                <input name="institution" type="text" placeholder="Your university or college" />
+                <input
+                  name="institution"
+                  type="text"
+                  maxLength={120}
+                  placeholder="Your university or college"
+                  value={profile.institution}
+                  onChange={updateField}
+                />
               </label>
               <label className="form-field">
                 <span>Field of study</span>
-                <input name="fieldOfStudy" type="text" placeholder="e.g. Information Systems" />
+                <input
+                  name="fieldOfStudy"
+                  type="text"
+                  maxLength={120}
+                  placeholder="e.g. Information Systems"
+                  value={profile.fieldOfStudy}
+                  onChange={updateField}
+                />
               </label>
               <label className="form-field">
                 <span>Graduation year</span>
-                <select name="graduationYear" defaultValue="">
+                <select name="graduationYear" value={profile.graduationYear} onChange={updateField}>
                   <option value="" disabled>
                     Select a year
                   </option>
@@ -277,11 +402,18 @@ export function ResumePage() {
               </label>
               <label className="form-field form-field--wide">
                 <span>What roles interest you?</span>
-                <input name="roles" type="text" placeholder="e.g. product design, data, marketing" />
+                <input
+                  name="roles"
+                  type="text"
+                  maxLength={300}
+                  placeholder="e.g. product design, data, marketing"
+                  value={profile.roles}
+                  onChange={updateField}
+                />
               </label>
               <label className="form-field form-field--wide">
                 <span>Preferred work setup</span>
-                <select name="workSetup" defaultValue="Flexible">
+                <select name="workSetup" value={profile.workSetup} onChange={updateField}>
                   <option>Flexible</option>
                   <option>On-site</option>
                   <option>Hybrid</option>
@@ -291,12 +423,37 @@ export function ResumePage() {
             </div>
           </section>
 
+          <section aria-labelledby="resume-review-title">
+            <div className="form-section-heading">
+              <span className="step-icon">
+                <FileText size={20} />
+              </span>
+              <div>
+                <p>Step 3</p>
+                <h2 id="resume-review-title">Review</h2>
+              </div>
+            </div>
+            <p>
+              {shownFile ? `Resume: ${shownFile.fileName}.` : 'No resume file added yet.'}{' '}
+              {answered} of {PROFILE_FIELDS.length} questions answered.
+              {pendingFile ? ' Save to upload your new file.' : ''}
+            </p>
+            <label className="check-row">
+              <input
+                type="checkbox"
+                checked={visibleToEmployers}
+                onChange={(event) => setVisibleToEmployers(event.target.checked)}
+              />
+              <span>Let employers on Morrow see my profile, email, and resume</span>
+            </label>
+          </section>
+
           <div className="form-actions">
             <Link className="button button--outline" to="/candidates">
               Back to candidate home
             </Link>
-            <button className="button button--dark" type="submit">
-              Save preview draft
+            <button className="button button--dark" type="submit" disabled={loading || saving}>
+              {saving ? 'Saving…' : 'Save resume'}
             </button>
           </div>
         </form>

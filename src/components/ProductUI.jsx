@@ -108,15 +108,15 @@ export function JobRow({ job, showMatch = false }) {
               <Bookmark size={18} aria-hidden="true" />
             )}
           </button>
-          <button
-            className="text-action"
-            type="button"
-            onClick={() =>
-              toast('The full job detail and application flow will connect here later.')
-            }
-          >
-            View role <ArrowUpRight size={16} aria-hidden="true" />
-          </button>
+          {job.href ? (
+            <Link className="text-action" to={job.href}>
+              View role <ArrowUpRight size={16} aria-hidden="true" />
+            </Link>
+          ) : job.sourceUrl ? (
+            <a className="text-action" href={job.sourceUrl} target="_blank" rel="noopener noreferrer">
+              View role <ArrowUpRight size={16} aria-hidden="true" />
+            </a>
+          ) : null}
         </div>
       </div>
     </article>

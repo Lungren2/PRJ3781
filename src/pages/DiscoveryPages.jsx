@@ -14,11 +14,11 @@ import {
   Globe2,
   GraduationCap,
   Layers3,
-  Link2,
   MapPin,
   Play,
   Search,
   Sparkles,
+  Wallet,
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
@@ -33,6 +33,7 @@ import { jobs } from '../data/mockData.js'
 import { getHackathons } from '../data/hackathons.js'
 import { getCourses } from '../data/courses.js'
 import { useToast } from '../components/ToastContext.jsx'
+import { useAuth } from '../components/AuthContext.jsx'
 import {
   fetchCertifications,
   fetchFacets,
@@ -700,194 +701,38 @@ export function CertificationsPage() {
     </main>
   )
 }
-export function PortfolioBuilderPage() {
-  const [name, setName] = useState('Your Name')
-  const [headline, setHeadline] = useState('Student designer and thoughtful problem solver')
-  const [sections, setSections] = useState({ projects: true, education: true, experience: false })
-  const toast = useToast()
-
-  return (
-    <main id="main-content" className="product-page">
-      <PageIntro
-        eyebrow="CV and portfolio builder"
-        title="Turn your work into a story."
-        copy="Shape a clean public profile from your CV, practical projects, and Morrow activity."
-        tone="ink"
-      >
-        <StatusPill tone="sage">Builder preview</StatusPill>
-      </PageIntro>
-      <div className="page-container module-page">
-        <ModuleStrip
-          label="Project module"
-          title="CV portfolio builder"
-          copy="Future service: combine CV details and completed work into a shareable page."
-        />
-        <PreviewNotice>
-          The preview is local. Public links and saved profiles are not generated yet.
-        </PreviewNotice>
-        <div className="portfolio-builder">
-          <form
-            className="portfolio-controls"
-            onSubmit={(event) => {
-              event.preventDefault()
-              toast('Portfolio draft saved locally for this preview.')
-            }}
-          >
-            <p className="eyebrow">Profile details</p>
-            <h2>Shape your page</h2>
-            <label className="form-field">
-              <span>Display name</span>
-              <input value={name} onChange={(event) => setName(event.target.value)} />
-            </label>
-            <label className="form-field">
-              <span>Headline</span>
-              <textarea
-                rows="3"
-                value={headline}
-                onChange={(event) => setHeadline(event.target.value)}
-              />
-            </label>
-            <fieldset>
-              <legend>Include sections</legend>
-              {Object.entries(sections).map(([key, checked]) => (
-                <label className="check-row" key={key}>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(event) =>
-                      setSections((current) => ({ ...current, [key]: event.target.checked }))
-                    }
-                  />
-                  <span>{key[0].toUpperCase() + key.slice(1)}</span>
-                </label>
-              ))}
-            </fieldset>
-            <div className="portfolio-controls__link">
-              <Link2 size={17} />
-              <span>morrow.local/portfolio/your-name</span>
-            </div>
-            <button className="button button--dark" type="submit">
-              Save preview draft
-            </button>
-          </form>
-          <section className="portfolio-preview" aria-label="Portfolio page preview">
-            <div className="portfolio-preview__browser">
-              <span />
-              <span />
-              <span />
-              <small>Portfolio preview</small>
-            </div>
-            <div className="portfolio-preview__body">
-              <span className="portfolio-avatar" aria-hidden="true">
-                {name === 'Your Name'
-                  ? 'YN'
-                  : name
-                      .split(' ')
-                      .map((word) => word[0])
-                      .slice(0, 2)
-                      .join('')
-                      .toUpperCase()}
-              </span>
-              <p>Portfolio / 2026</p>
-              <h2>{name || 'Your Name'}</h2>
-              <h3>{headline || 'Add a short headline'}</h3>
-              {sections.projects && (
-                <div className="portfolio-preview__section">
-                  <span>Selected project</span>
-                  <strong>Student experience research</strong>
-                  <p>A short case study preview will appear here.</p>
-                </div>
-              )}
-              {sections.education && (
-                <div className="portfolio-preview__line">
-                  <span>Education</span>
-                  <strong>Your programme and institution</strong>
-                </div>
-              )}
-              {sections.experience && (
-                <div className="portfolio-preview__line">
-                  <span>Experience</span>
-                  <strong>Your work and practical experience</strong>
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
-      </div>
-    </main>
-  )
-}
-
+const PROJECT_STATUSES = ['Open', 'In Progress', 'Completed']
 export function ProjectsPage() {
-  const toast = useToast()
-  const [showForm, setShowForm] = useState(false)
-  const [formData, setFormData] = useState({
-    title: "",
-    companyName: "",
-    department: "",
-    category: "",
-    deadline: "",
-    description: "",
-  })
+  const { user, apiFetch } = useAuth()
+  const postingOrganization = user?.organizations.find(({ role }) => role === 'owner' || role === 'recruiter')
   const [department, setDepartment] = useState('All departments')
+  const [status, setStatus] = useState('Open')
   const [projects, setProjects] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
 
   useEffect(() => {
-    fetch('http://127.0.0.1:8787/api/product-requests')
-      .then((res) => res.json())
-      .then((data) => {
-        setProjects(data)
-        setLoading(false)
-      })
-      .catch((err) => {
-        console.error(err)
-        setLoading(false)
-      })
-  }, [])
+    let active = true
+    apiFetch('/api/product-requests')
+      .then((data) => { if (active) setProjects(data) })
+      .catch((error) => { if (active) setLoadError(`Could not load project requests: ${error.message}`) })
+      .finally(() => { if (active) setLoading(false) })
+    return () => { active = false }
+  }, [apiFetch])
 
-  async function handleSubmit(event) {
-    event.preventDefault()
-
-    const response = await fetch("http://127.0.0.1:8787/api/product-requests", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        title: formData.title,
-        companyName: formData.companyName,
-        department: formData.department,
-        category: formData.category,
-        deadline: formData.deadline,
-        description: formData.description,
-        status: "Open",
-      }),
-    })
-
-    const newProject = await response.json()
-
-    setProjects((prev) => [...prev, newProject])
-    setShowForm(false)
-
-    setFormData({
-      title: "",
-      companyName: "",
-      department: "",
-      category: "",
-      deadline: "",
-      description: "",
-    })
-  }
+  const departments = useMemo(
+    () => [...new Set(projects.map((project) => project.department))].sort((a, b) => a.localeCompare(b)),
+    [projects],
+  )
 
   const visibleProjects = useMemo(
     () =>
       projects.filter(
         (project) =>
-          department === 'All departments' ||
-          project.department === department
+          (department === 'All departments' || project.department === department) &&
+          (status === 'All statuses' || project.status === status),
       ),
-    [projects, department]
+    [projects, department, status],
   )
 
   return (
@@ -902,14 +747,10 @@ export function ProjectsPage() {
         <ModuleStrip
           label="Project module"
           title="Product requests"
-          copy="Future service: post, join, track, and complete small scoped projects."
+          copy="Employers post short, scoped (often paid) projects; candidates apply with their Morrow account."
           status="Connected"
           tone="sage"
         />
-        <PreviewNotice>
-          Organisations and briefs are fictional examples. Joining and completion states are
-          frontend placeholders.
-        </PreviewNotice>
         <section className="project-browser" aria-labelledby="project-list-title">
           <aside className="project-filters">
             <p className="eyebrow">Find a brief</p>
@@ -918,18 +759,18 @@ export function ProjectsPage() {
               <span>Department</span>
               <select value={department} onChange={(event) => setDepartment(event.target.value)}>
                 <option>All departments</option>
-                <option>Information Systems</option>
-                <option>Marketing</option>
-                <option>Design</option>
-                <option>Computer Science</option>
+                {departments.map((name) => (
+                  <option key={name}>{name}</option>
+                ))}
               </select>
             </label>
             <label>
               <span>Status</span>
-              <select defaultValue="Open">
-                <option>Open</option>
-                <option>In progress</option>
-                <option>Completed</option>
+              <select value={status} onChange={(event) => setStatus(event.target.value)}>
+                <option>All statuses</option>
+                {PROJECT_STATUSES.map((name) => (
+                  <option key={name}>{name}</option>
+                ))}
               </select>
             </label>
             <div>
@@ -943,53 +784,61 @@ export function ProjectsPage() {
           <div className="project-results">
             <div className="results-toolbar">
               <div>
-                <p className="eyebrow">Open requests</p>
+                <p className="eyebrow">{status === 'All statuses' ? 'All requests' : `${status} requests`}</p>
                 <h2 id="project-list-title">
-                  {loading ? 'Loading...' : `${visibleProjects.length} project briefs`}
+                  {loading
+                    ? 'Loading...'
+                    : `${visibleProjects.length} project brief${visibleProjects.length === 1 ? '' : 's'}`}
                 </h2>
               </div>
-              <button
-                className="button button--dark"
-                type="button"
-                onClick={() => setShowForm(true)}
-              >
-                + Post Request
-              </button>
+              {postingOrganization && (
+                <Link className="button button--dark" to="/employers/post-job?kind=project">
+                  + Post a paid project
+                </Link>
+              )}
             </div>
 
-            {visibleProjects.length === 0 && !loading ? (
+            {loadError && <p role="alert">{loadError}</p>}
+            {visibleProjects.length === 0 && !loading && !loadError ? (
               <div className="empty-state">
                 <Layers3 size={28} />
-                <h2>No project requests yet</h2>
-                <p>Create a Product Request and it will appear here.</p>
+                <h2>No project requests here yet</h2>
+                <p>
+                  {postingOrganization
+                    ? 'Post a request and it will appear here.'
+                    : 'Try another filter, or check back when organisations post new briefs.'}
+                </p>
               </div>
             ) : (
               visibleProjects.map((project) => (
-                <article key={project._id || project.title}>
+                <article key={project.id}>
                   <div className="project-row__top">
                     <span className="project-icon">
                       <Layers3 size={20} />
                     </span>
-                    <StatusPill tone={project.status === 'Open' ? 'sage' : 'blue'}>
-                      {project.status}
-                    </StatusPill>
+                    <StatusPill tone={project.status === 'Open' ? 'sage' : 'blue'}>{project.status}</StatusPill>
                   </div>
-                  <p>{project.companyName || project.organisation}</p>
+                  <p>{project.companyName}</p>
                   <h3>{project.title}</h3>
                   <div className="project-row__meta">
                     <span>
                       <BriefcaseBusiness size={15} /> {project.department}
                     </span>
                     <span>
-                      <Clock3 size={15} /> {project.category || project.commitment}
+                      <Clock3 size={15} /> {project.category}
+                    </span>
+                    <span>
+                      <Wallet size={15} /> {project.pay || 'Unpaid'}
+                      {project.duration ? ' · ' + project.duration : ''}
+                    </span>
+                    <span>
+                      <CalendarDays size={15} />{' '}
+                      {project.deadline ? `Apply by ${new Date(project.deadline).toLocaleDateString()}` : 'No deadline'}
                     </span>
                   </div>
                   <p className="project-description">{project.description}</p>
-                  <Link
-                    to={`/projects/${project._id}`}
-                    className="text-action"
-                  >
-                    View project <ArrowUpRight size={16} />
+                  <Link to={`/projects/${project.id}`} className="text-action">
+                    {project.viewer.hasApplied ? 'Applied - view project' : 'View project'} <ArrowUpRight size={16} />
                   </Link>
                 </article>
               ))
@@ -997,100 +846,6 @@ export function ProjectsPage() {
           </div>
         </section>
       </div>
-      {showForm && (
-        <div className="modal-overlay">
-          <div className="modal-card">
-            <div className="modal-header">
-              <h2>Post a Product Request</h2>
-              <button
-                className="icon-button"
-                type="button"
-                onClick={() => setShowForm(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <p>
-              Employers and university departments can create a new project request here.
-            </p>
-
-            <form className="modal-form" onSubmit={handleSubmit}>
-              <label>
-                Project Title
-                <input
-                  type="text"
-                  placeholder="e.g. GradConnect Landing Page"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                />
-              </label>
-
-              <label>
-                Company / Organisation
-                <input
-                  type="text"
-                  placeholder="Belgium Campus"
-                  value={formData.companyName}
-                  onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                />
-              </label>
-
-              <label>
-                Department
-                <input
-                  type="text"
-                  placeholder="Information Systems"
-                  value={formData.department}
-                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                />
-              </label>
-
-              <label>
-                Category
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                >
-                  <option value="" disabled>Select a category</option>
-                  <option value="Web Development">Web Development</option>
-                  <option value="Mobile Development">Mobile Development</option>
-                  <option value="UI/UX Design">UI/UX Design</option>
-                  <option value="Data Analysis">Data Analysis</option>
-                  <option value="Research">Research</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="General">General</option>
-                </select>
-              </label>
-
-              <label>
-                Deadline
-                <input
-                  type="date"
-                  value={formData.deadline}
-                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                />
-              </label>
-
-              <label>
-                Description
-                <textarea
-                  rows="4"
-                  placeholder="Describe what students will be working on..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                />
-              </label>
-
-              <div className="modal-actions">
-                <button className="button button--dark modal-continue" type="submit">
-                  Post Request
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </main>
   )
 }

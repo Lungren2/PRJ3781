@@ -2,17 +2,21 @@ import crypto from 'node:crypto'
 import { readCookie } from './cookies.js'
 import { getSession, publicUser } from './repository.js'
 
-export function optionalAuth(req, res, next) {
-  const sessionToken = readCookie(req)
-  const session = getSession(sessionToken)
-  req.auth = session ? {
-    sessionToken,
-    sessionId: session.session_id,
-    csrfToken: session.csrf_token,
-    expiresAt: session.expires_at,
-  } : null
-  req.user = publicUser(session)
-  next()
+export async function optionalAuth(req, res, next) {
+  try {
+    const sessionToken = readCookie(req)
+    const session = await getSession(sessionToken)
+    req.auth = session ? {
+      sessionToken,
+      sessionId: session.sessionId,
+      csrfToken: session.csrfToken,
+      expiresAt: session.expiresAt,
+    } : null
+    req.user = await publicUser(session?.user)
+    next()
+  } catch (error) {
+    next(error)
+  }
 }
 
 export function requireAuth(req, res, next) {

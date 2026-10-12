@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useLocation, useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   BriefcaseBusiness,
@@ -7,95 +7,176 @@ import {
   Clock3,
 } from "lucide-react";
 import { useToast } from "../components/ToastContext.jsx";
+import { useAuth } from "../components/AuthContext.jsx";
+
+const STATUSES = ["Open", "In Progress", "Completed"];
+
+const APPLICANT_STATUS_LABELS = {
+  applied: "Applied",
+  selected: "Selected",
+  completed: "Completed (shows on portfolio)",
+  declined: "Declined",
+};
+
+const APPLICATION_STATUS_TEXT = {
+  applied: "You applied. The organisation will be in touch if you are selected.",
+  selected: "You were selected for this project.",
+  declined: "This organisation went with other applicants.",
+};
+
+function formatDate(value) {
+  return value ? new Date(value).toLocaleDateString() : "No deadline";
+}
 
 export default function ProjectDetailsPage() {
   const { id } = useParams();
   const toast = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user, apiFetch } = useAuth();
   const [project, setProject] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [applying, setApplying] = useState(false);
-  const demoStudentId = "507f1f77bcf86cd799439011";
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-  const start = Date.now();
+    let active = true;
+    setLoading(true);
+    apiFetch(`/api/product-requests/${id}`)
+      .then((data) => { if (active) setProject(data); })
+      .catch((error) => {
+        if (active && error.status !== 404) toast(`Could not load project: ${error.message}`);
+        if (active) setProject(null);
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+    // Reload when the project or the logged-in account changes.
+  }, [id, user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  fetch(`http://127.0.0.1:8787/api/product-requests/${id}`)
-    .then((res) => res.json())
-    .then((data) => {
-      const elapsed = Date.now() - start;
-      const delay = Math.max(500 - elapsed, 0);
+  async function run(action, successMessage) {
+    setBusy(true);
+    try {
+      const updated = await action();
+      if (updated) setProject(updated);
+      if (successMessage) toast(successMessage);
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
-      setTimeout(() => {
-        setProject(data);
-        setLoading(false);
-      }, delay);
-    })
-    .catch((err) => {
-      console.error(err);
-      setLoading(false);
-    });
-}, [id]);
-
-async function handleApply() {
-
-
-  try {
-    setApplying(true);
-
-    const response = await fetch(
-      `http://127.0.0.1:8787/api/product-requests/${id}/assign`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-       body: JSON.stringify({
-  studentId: demoStudentId,
-}),
-      }
+  const apply = () =>
+    run(
+      () => apiFetch(`/api/product-requests/${id}/apply`, { method: "POST" }),
+      "Application submitted successfully.",
     );
 
-    const updatedProject = await response.json();
+  const withdraw = () =>
+    run(
+      () => apiFetch(`/api/product-requests/${id}/apply`, { method: "DELETE" }),
+      "Your application was withdrawn.",
+    );
 
-   if (response.ok) {
-  setProject(updatedProject);
-  toast("Application submitted successfully.");
-} else {
-      console.error(updatedProject);
+  const changeStatus = (status) =>
+    run(
+      () =>
+        apiFetch(`/api/product-requests/${id}/status`, {
+          method: "PUT",
+          body: JSON.stringify({ status }),
+        }),
+      `Status changed to ${status}.`,
+    );
+
+  const changeApplicantStatus = (userId, status) =>
+    run(
+      () =>
+        apiFetch(`/api/organizations/${project.organizationId}/product-requests/${id}/applicants/${userId}`, {
+          method: "PUT",
+          body: JSON.stringify({ status }),
+        }),
+      status === "completed" ? "Marked as completed. It now shows on their portfolio." : "Applicant updated.",
+    );
+
+  async function remove() {
+    if (!window.confirm(`Delete "${project.title}"? This cannot be undone.`)) return;
+    setBusy(true);
+    try {
+      await apiFetch(`/api/product-requests/${id}`, { method: "DELETE" });
+      toast("Project request deleted.");
+      navigate("/projects");
+    } catch (error) {
+      toast(`Could not delete: ${error.message}`);
+      setBusy(false);
     }
-  } catch (error) {
-    console.error(error);
-  } finally {
-    setApplying(false);
   }
-}
-const hasApplied =
-  project?.assignedStudents?.some(
-    (student) => (student._id || student) === demoStudentId
-  ) || false;
 
-const deadlinePassed =
-  project?.deadline && new Date(project.deadline) < new Date();
-
- if (loading) {
-  return (
-    <main className="product-page loading-page">
-      <div className="morrow-loader"></div>
-      <p className="loading-text">Loading project...</p>
-    </main>
-  );
-}
-
-  if (!project) {
+  if (loading) {
     return (
-      <main className="product-page">
-        <p>Project not found.</p>
+      <main className="product-page loading-page">
+        <div className="morrow-loader"></div>
+        <p className="loading-text">Loading project...</p>
       </main>
     );
   }
 
+  if (!project) {
+    return (
+      <main className="product-page">
+        <div className="page-container">
+          <p>Project not found.</p>
+          <Link to="/projects" className="text-action back-link">
+            <ArrowLeft size={16} />
+            Back to Projects
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
+  const { viewer } = project;
+  const applicantLabel = `${project.applicantCount} student${project.applicantCount !== 1 ? "s" : ""} applied`;
+
+  let applyAction = null;
+  if (!user) {
+    applyAction = (
+      <Link
+        className="button button--dark"
+        to="/auth?mode=login"
+        state={{ from: location.pathname }}
+      >
+        Log in to apply
+      </Link>
+    );
+  } else if (viewer.canApply && viewer.applicationStatus === "completed") {
+    applyAction = (
+      <Link className="button button--dark" to="/portfolio-builder">
+        Completed ✓ - See it on your portfolio
+      </Link>
+    );
+  } else if (viewer.canApply && viewer.hasApplied) {
+    applyAction = (
+      <div className="project-application-state">
+        <span>{APPLICATION_STATUS_TEXT[viewer.applicationStatus] ?? APPLICATION_STATUS_TEXT.applied}</span>
+        <button className="button button--outline" type="button" onClick={withdraw} disabled={busy}>
+          {busy ? "Withdrawing..." : "Withdraw application"}
+        </button>
+      </div>
+    );
+  } else if (viewer.canApply) {
+    applyAction = (
+      <button
+        className={`button ${project.applicationsOpen ? "button--dark" : "button--outline"}`}
+        type="button"
+        onClick={apply}
+        disabled={busy || !project.applicationsOpen}
+      >
+        {!project.applicationsOpen ? "Applications Closed" : busy ? "Applying..." : "Apply to Project"}
+      </button>
+    );
+  }
+
   return (
-    <main className="product-page">
+    <main id="main-content" className="product-page">
       <section className="project-hero">
         <div className="page-container">
           <Link to="/projects" className="text-action back-link">
@@ -119,9 +200,7 @@ const deadlinePassed =
 
             <span>
               <CalendarDays size={15} />
-              {project.deadline
-                ? new Date(project.deadline).toLocaleDateString()
-                : "No deadline"}
+              {formatDate(project.deadline)}
             </span>
           </div>
         </div>
@@ -133,78 +212,108 @@ const deadlinePassed =
 
           <p className="project-description">{project.description}</p>
 
-         <hr className="project-divider" />
+          <hr className="project-divider" />
 
-<div className="project-info-grid">
-  <div className="info-card">
-    <span className="deadline-label">Application deadline</span>
-    <strong>
-      {project.deadline
-        ? new Date(project.deadline).toLocaleDateString()
-        : "No deadline"}
-    </strong>
-  </div>
+          <div className="project-info-grid">
+            <div className="info-card">
+              <span className="deadline-label">Payment</span>
+              <strong>{project.pay || "Unpaid"}</strong>
+            </div>
 
-  <div className="info-card">
-    <span className="deadline-label">Applicants</span>
-    <strong>
-      {project.assignedStudents?.length || 0}
-    </strong>
-  </div>
-</div>
+            {project.duration && (
+              <div className="info-card">
+                <span className="deadline-label">Expected duration</span>
+                <strong>{project.duration}</strong>
+              </div>
+            )}
 
-<div className="applications-panel">
-  <div className="applications-panel__header">
-    <div>
-      <h3>Applications</h3>
-      <p>
-        {project.assignedStudents?.length || 0} student
-        {(project.assignedStudents?.length || 0) !== 1 ? "s" : ""} applied
-      </p>
-    </div>
-  </div>
+            <div className="info-card">
+              <span className="deadline-label">Application deadline</span>
+              <strong>{formatDate(project.deadline)}</strong>
+            </div>
 
-  {project.assignedStudents?.length > 0 ? (
-    <div className="applicant-list">
-      {project.assignedStudents.map((student, index) => (
-        <div className="applicant-row" key={student._id || student}>
-          <div className="applicant-avatar">
-            {student.name
-              ? student.name.charAt(0).toUpperCase()
-              : index + 1}
+            <div className="info-card">
+              <span className="deadline-label">Status</span>
+              {viewer.canManage ? (
+                <select
+                  aria-label="Project status"
+                  value={project.status}
+                  onChange={(event) => changeStatus(event.target.value)}
+                  disabled={busy}
+                >
+                  {STATUSES.map((status) => (
+                    <option key={status}>{status}</option>
+                  ))}
+                </select>
+              ) : (
+                <strong>{project.status}</strong>
+              )}
+            </div>
+
+            <div className="info-card">
+              <span className="deadline-label">Applicants</span>
+              <strong>{project.applicantCount}</strong>
+            </div>
           </div>
 
-          <div className="applicant-info">
-            <strong>{student.name || "Applicant"}</strong>
-            <span>{student.email || "Student account"}</span>
-          </div>
-        </div>
-      ))}
-    </div>
-  ) : (
-    <p className="no-applications">
-      No applications yet.
-    </p>
-  )}
-</div>
+          {project.applicants && (
+            <div className="applications-panel">
+              <div className="applications-panel__header">
+                <div>
+                  <h3>Applications</h3>
+                  <p>{applicantLabel}. Only your organisation can see this list.</p>
+                </div>
+              </div>
 
-<div className="project-footer">
-  <button
-  className={`button ${
-    hasApplied || deadlinePassed ? "button--outline" : "button--dark"
-  }`}
-  onClick={handleApply}
-  disabled={applying || hasApplied || deadlinePassed}
->
-  {deadlinePassed
-    ? "Applications Closed"
-    : hasApplied
-    ? "Applied ✓"
-    : applying
-    ? "Applying..."
-    : "Apply to Project"}
-</button>
-</div>
+              {project.applicants.length > 0 ? (
+                <div className="applicant-list">
+                  {project.applicants.map((applicant) => (
+                    <div className="applicant-row" key={applicant.id}>
+                      <div className="applicant-avatar">{applicant.name.charAt(0).toUpperCase()}</div>
+
+                      <div className="applicant-info">
+                        <strong>{applicant.name}</strong>
+                        <span>
+                          <a href={`mailto:${applicant.email}`}>{applicant.email}</a>
+                          {" · applied "}
+                          {new Date(applicant.appliedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {viewer.canManage ? (
+                        <label className="compact-select">
+                          <span className="sr-only">Status for {applicant.name}</span>
+                          <select
+                            value={applicant.status}
+                            disabled={busy}
+                            onChange={(event) => changeApplicantStatus(applicant.id, event.target.value)}
+                          >
+                            {Object.entries(APPLICANT_STATUS_LABELS).map(([value, label]) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : (
+                        <span className="applicant-status">{APPLICANT_STATUS_LABELS[applicant.status]}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="no-applications">No applications yet.</p>
+              )}
+            </div>
+          )}
+
+          <div className="project-footer">
+            {viewer.canManage && (
+              <button className="button button--outline" type="button" onClick={remove} disabled={busy}>
+                Delete request
+              </button>
+            )}
+            {applyAction}
+          </div>
         </div>
       </section>
     </main>

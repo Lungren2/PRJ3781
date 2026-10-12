@@ -1,66 +1,37 @@
 import assert from 'node:assert/strict'
-import fs from 'node:fs'
-import os from 'node:os'
-import path from 'node:path'
 import test, { after } from 'node:test'
+import { PASSWORD, startTestServer } from '../testing/harness.js'
 
-const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'morrow-auth-'))
-process.env.MORROW_DB_PATH = path.join(testDir, 'auth.db')
-process.env.MORROW_CRAWL_SCHEDULE_ENABLED = '0'
-process.env.MORROW_LOGIN_MAX_ATTEMPTS = '1000'
-
-const [{ createApp }, { closeDb, getDb }, policies] = await Promise.all([
-  import('../app.js'),
-  import('../db/index.js'),
+const { request, signup, stop } = await startTestServer()
+const [policies, { default: Session }, { default: User }] = await Promise.all([
   import('./policies.js'),
+  import('../models/Session.js'),
+  import('../models/User.js'),
 ])
 
-const server = createApp().listen(0, '127.0.0.1')
-await new Promise((resolve) => server.once('listening', resolve))
-const { port } = server.address()
-const baseUrl = `http://127.0.0.1:${port}`
+after(stop)
 
-after(async () => {
-  await new Promise((resolve) => server.close(resolve))
-  closeDb()
-  fs.rmSync(testDir, { recursive: true, force: true })
-})
-
-async function request(pathname, { cookie, csrfToken, body, ...options } = {}) {
-  const headers = new Headers(options.headers)
-  if (cookie) headers.set('cookie', cookie)
-  if (csrfToken) headers.set('x-csrf-token', csrfToken)
-  if (body) headers.set('content-type', 'application/json')
-  return fetch(`${baseUrl}${pathname}`, {
-    ...options,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
+async function saveResume(candidate, profile, visibleToEmployers) {
+  const response = await request('/api/candidate/resume', {
+    method: 'PUT',
+    cookie: candidate.cookie,
+    csrfToken: candidate.csrfToken,
+    body: { profile, visibleToEmployers },
   })
+  assert.equal(response.status, 200)
+  return response.json()
 }
 
-let accountCount = 0
-const PASSWORD = 'correct horse battery'
-
-async function signup(accountType, overrides = {}) {
-  accountCount += 1
-  const response = await request('/api/auth/signup', {
-    method: 'POST',
-    body: {
-      email: `${accountType}${accountCount}@example.com`,
-      password: PASSWORD,
-      displayName: `Test ${accountType}`,
-      accountType,
-      companyName: accountType === 'employer' ? `Company ${accountCount}` : undefined,
-      ...overrides,
-    },
+async function uploadResume(candidate, contents = Buffer.from('%PDF-1.4\nresume')) {
+  const response = await request('/api/candidate/resume/file', {
+    method: 'PUT',
+    cookie: candidate.cookie,
+    csrfToken: candidate.csrfToken,
+    headers: { 'content-type': 'application/pdf', 'x-file-name': 'cv.pdf' },
+    body: contents,
   })
   assert.equal(response.status, 201)
-  const data = await response.json()
-  return {
-    cookie: response.headers.get('set-cookie').split(';', 1)[0],
-    csrfToken: data.csrfToken,
-    user: data.user,
-  }
+  return contents
 }
 
 test('public catalogue stays public while candidate resources require authentication', async () => {
@@ -76,22 +47,7 @@ test('demo and Entra login routes are gone', async () => {
   assert.equal((await request('/api/auth/providers')).status, 404)
 })
 
-test('legacy demo accounts are removed from existing databases', async () => {
-  const db = getDb()
-  const createdAt = new Date().toISOString()
-  db.prepare(`
-    INSERT INTO users (id, email, password_hash, display_name, status, created_at)
-    VALUES ('demo-candidate', 'candidate@morrow.demo', 'x', 'Demo', 'active', ?)
-  `).run(createdAt)
-  db.prepare("INSERT INTO organizations (id, name, created_at) VALUES ('demo-org', 'Demo', ?)").run(createdAt)
-
-  const { removeLegacyDemoAccounts } = await import('./repository.js')
-  removeLegacyDemoAccounts()
-  assert.equal(db.prepare("SELECT 1 FROM users WHERE id = 'demo-candidate'").get(), undefined)
-  assert.equal(db.prepare("SELECT 1 FROM organizations WHERE id = 'demo-org'").get(), undefined)
-})
-
-test('candidate sign-up creates a candidate account and signs it in', async () => {
+test('candidate sign-up creates a candidate account in MongoDB and signs it in', async () => {
   const candidate = await signup('candidate')
   assert.equal(candidate.user.isCandidate, true)
   assert.deepEqual(candidate.user.organizations, [])
@@ -99,9 +55,10 @@ test('candidate sign-up creates a candidate account and signs it in', async () =
 
   const me = await (await request('/api/auth/me', { cookie: candidate.cookie })).json()
   assert.equal(me.user.id, candidate.user.id)
-  const stored = getDb().prepare('SELECT password_hash FROM users WHERE id = ?').get(candidate.user.id)
-  assert.match(stored.password_hash, /^scrypt\$/)
-  assert.equal(stored.password_hash.includes(PASSWORD), false)
+  const stored = await User.findById(candidate.user.id).select('+passwordHash').lean()
+  assert.equal(stored.role, 'student')
+  assert.match(stored.passwordHash, /^scrypt\$/)
+  assert.equal(stored.passwordHash.includes(PASSWORD), false)
 })
 
 test('employer sign-up creates an organization owned by the new user', async () => {
@@ -170,18 +127,16 @@ test('candidate access is scoped and authenticated writes require CSRF', async (
   const rejected = await request('/api/candidate/resume', {
     method: 'PUT',
     cookie: candidate.cookie,
-    body: { draft: { institution: 'Demo University' } },
+    body: { profile: { institution: 'Demo University' } },
   })
   assert.equal(rejected.status, 403)
 
-  const saved = await request('/api/candidate/resume', {
-    method: 'PUT',
-    cookie: candidate.cookie,
-    csrfToken: candidate.csrfToken,
-    body: { draft: { institution: 'Demo University' } },
-  })
-  assert.equal(saved.status, 200)
-  assert.equal((await saved.json()).userId, candidate.user.id)
+  const saved = await saveResume(candidate, { institution: 'Demo University' })
+  assert.equal(saved.userId, candidate.user.id)
+  assert.equal(saved.visibleToEmployers, false)
+
+  const rejectedUpload = await request('/api/candidate/resume/file', { method: 'PUT', cookie: candidate.cookie })
+  assert.equal(rejectedUpload.status, 403)
 })
 
 test('employer access is limited to its organization', async () => {
@@ -194,12 +149,16 @@ test('employer access is limited to its organization', async () => {
     (await request(`/api/organizations/${organizationId}/candidates`, { cookie: employer.cookie })).status,
     200,
   )
+  assert.equal(
+    (await request(`/api/organizations/${otherOrganizationId}/candidates`, { cookie: employer.cookie })).status,
+    403,
+  )
 
   const created = await request(`/api/organizations/${organizationId}/jobs`, {
     method: 'POST',
     cookie: employer.cookie,
     csrfToken: employer.csrfToken,
-    body: { draft: { title: 'Graduate developer' } },
+    body: { job: { title: 'Graduate developer' } },
   })
   assert.equal(created.status, 201)
 
@@ -207,7 +166,7 @@ test('employer access is limited to its organization', async () => {
     method: 'POST',
     cookie: other.cookie,
     csrfToken: other.csrfToken,
-    body: { draft: { title: 'Theirs' } },
+    body: { job: { title: 'Theirs' } },
   })
   const { id: otherJobId } = await otherJob.json()
 
@@ -215,15 +174,67 @@ test('employer access is limited to its organization', async () => {
     method: 'PATCH',
     cookie: employer.cookie,
     csrfToken: employer.csrfToken,
-    body: { draft: { title: 'Not allowed' } },
+    body: { job: { title: 'Not allowed' } },
   })
   assert.equal(crossOrganization.status, 403)
+
+  const ownEdit = await request(`/api/organizations/${otherOrganizationId}/jobs/${otherJobId}`, {
+    method: 'PATCH',
+    cookie: other.cookie,
+    csrfToken: other.csrfToken,
+    body: { job: { title: 'Updated' } },
+  })
+  assert.equal(ownEdit.status, 200)
+  assert.equal((await ownEdit.json()).title, 'Updated')
+})
+
+test('employers only see candidates who opted in, and can download their resumes', async () => {
+  const employer = await signup('employer')
+  const organizationId = employer.user.organizations[0].id
+  const visible = await signup('candidate', { displayName: 'Visible Candidate' })
+  const hidden = await signup('candidate', { displayName: 'Hidden Candidate' })
+
+  await saveResume(visible, { fieldOfStudy: 'Information Systems', workSetup: 'Remote' }, true)
+  const resumeFile = await uploadResume(visible)
+  await saveResume(hidden, { fieldOfStudy: 'Information Systems', workSetup: 'Remote' }, false)
+  await uploadResume(hidden)
+
+  const list = async (search = '') => {
+    const response = await request(`/api/organizations/${organizationId}/candidates${search}`, { cookie: employer.cookie })
+    assert.equal(response.status, 200)
+    return (await response.json()).items
+  }
+
+  const items = await list()
+  assert.deepEqual(items.map((item) => item.id), [visible.user.id])
+  assert.equal(items[0].displayName, 'Visible Candidate')
+  assert.equal(items[0].email, visible.user.email)
+  assert.equal(items[0].hasResumeFile, true)
+  assert.equal(items[0].profile.fieldOfStudy, 'Information Systems')
+
+  assert.equal((await list('?q=information')).length, 1)
+  assert.equal((await list('?q=visible%20cand')).length, 1)
+  assert.equal((await list('?q=nothing-matches')).length, 0)
+  assert.equal((await list('?workSetup=Remote')).length, 1)
+  assert.equal((await list('?workSetup=Hybrid')).length, 0)
+  assert.equal((await list('?q=(.*')).length, 0)
+
+  const base = `/api/organizations/${organizationId}/candidates`
+  const download = await request(`${base}/${visible.user.id}/resume`, { cookie: employer.cookie })
+  assert.equal(download.status, 200)
+  assert.ok(Buffer.from(await download.arrayBuffer()).equals(resumeFile))
+  assert.equal((await request(`${base}/${hidden.user.id}/resume`, { cookie: employer.cookie })).status, 404)
+  assert.equal((await request(`${base}/not-an-id/resume`, { cookie: employer.cookie })).status, 404)
+  assert.equal((await request(`${base}/${visible.user.id}/resume`, { cookie: visible.cookie })).status, 403)
+
+  // Opting out hides the candidate again.
+  await saveResume(visible, {}, false)
+  assert.equal((await list()).length, 0)
 })
 
 test('expired and logged-out sessions are rejected', async () => {
   const expired = await signup('candidate')
-  getDb().prepare("UPDATE sessions SET expires_at = '2000-01-01T00:00:00.000Z' WHERE user_id = ?")
-    .run(expired.user.id)
+  await Session.updateMany({ user: expired.user.id }, { expiresAt: new Date('2000-01-01T00:00:00.000Z') })
   assert.equal((await request('/api/candidate/resume', { cookie: expired.cookie })).status, 401)
 
   const active = await signup('employer')
@@ -240,8 +251,9 @@ test('expired and logged-out sessions are rejected', async () => {
 test('ownership policies deny by default', () => {
   const candidate = { id: 'candidate', isCandidate: true, organizations: [] }
   const employer = { id: 'employer', isCandidate: false, organizations: [{ id: 'org', role: 'recruiter' }] }
-  assert.equal(policies.canReadResume(candidate, { userId: 'candidate' }), true)
-  assert.equal(policies.canReadResume(candidate, { userId: 'someone-else' }), false)
+  assert.equal(policies.canReadResume(candidate, { user: 'candidate' }), true)
+  assert.equal(policies.canReadResume(candidate, { user: 'someone-else' }), false)
+  assert.equal(policies.canReadResume(candidate, {}), false)
   assert.equal(policies.canEditJob(employer, { organizationId: 'org' }), true)
   assert.equal(policies.canEditJob(employer, { organizationId: 'other-org' }), false)
   assert.equal(policies.canManageOrganization(employer, 'org'), false)
