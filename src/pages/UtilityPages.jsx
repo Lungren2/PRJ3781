@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Check, LockKeyhole, Mail, UserRound } from 'lucide-react'
+import { ArrowLeft, Building2, Check, LockKeyhole, Mail, UserRound } from 'lucide-react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { PageIntro, PreviewNotice } from '../components/ProductUI.jsx'
 import { useAuth } from '../components/AuthContext.jsx'
@@ -8,11 +8,14 @@ export function AuthPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedMode = searchParams.get('mode') === 'signup' ? 'signup' : 'login'
   const [mode, setMode] = useState(requestedMode)
-  const { user, providers, login, demoLogin } = useAuth()
+  const { user, login, signup } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [accountType, setAccountType] = useState('candidate')
+  const [companyName, setCompanyName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -22,6 +25,7 @@ export function AuthPage() {
 
   const chooseMode = (nextMode) => {
     setMode(nextMode)
+    setError('')
     setSearchParams({ mode: nextMode }, { replace: true })
   }
 
@@ -30,12 +34,12 @@ export function AuthPage() {
     navigate(location.state?.from || fallback, { replace: true })
   }
 
-  const submitLogin = async (event) => {
+  const submit = (authenticate) => async (event) => {
     event.preventDefault()
     setBusy(true)
     setError('')
     try {
-      finishLogin(await login(email, password))
+      finishLogin(await authenticate())
     } catch (nextError) {
       setError(nextError.message)
     } finally {
@@ -43,18 +47,16 @@ export function AuthPage() {
     }
   }
 
-  const continueAs = async (persona) => {
-    setBusy(true)
-    setError('')
-    try {
-      finishLogin(await demoLogin(persona))
-    } catch (nextError) {
-      setError(nextError.message)
-      setBusy(false)
-    }
-  }
-
-  const entraReturnTo = location.state?.from || '/candidates'
+  const submitLogin = submit(() => login(email, password))
+  const submitSignup = submit(() =>
+    signup({
+      email,
+      password,
+      displayName,
+      accountType,
+      companyName: accountType === 'employer' ? companyName : undefined,
+    }),
+  )
 
   if (user) {
     return (
@@ -102,11 +104,6 @@ export function AuthPage() {
           <ArrowLeft size={17} /> Back home
         </Link>
         <div className="auth-form-wrap">
-          <PreviewNotice>
-            {providers.entra.enabled
-              ? 'Microsoft Entra ID and local demo authentication are available.'
-              : 'Demo authentication is connected. Microsoft Entra ID is supported but currently disabled.'}
-          </PreviewNotice>
           <div className="auth-tabs" role="tablist" aria-label="Account access">
             <button
               type="button"
@@ -124,32 +121,22 @@ export function AuthPage() {
               className={mode === 'signup' ? 'is-active' : ''}
               onClick={() => chooseMode('signup')}
             >
-              Demo access
+              Sign up
             </button>
           </div>
           <div>
-            <p className="eyebrow">
-              {mode === 'login' ? 'Welcome back' : 'Demo accounts'}
-            </p>
-            <h2>{mode === 'login' ? 'Log in to Morrow' : 'Choose a preview workspace'}</h2>
+            <p className="eyebrow">{mode === 'login' ? 'Welcome back' : 'New to Morrow'}</p>
+            <h2>{mode === 'login' ? 'Log in to Morrow' : 'Create your account'}</h2>
             <p>
               {mode === 'login'
-                ? 'Use a seeded account or continue with one click.'
-                : 'Public sign-up is intentionally disabled for this concept.'}
+                ? 'Use the email and password you signed up with.'
+                : 'Sign up as a candidate looking for work, or as an employer hiring for your company.'}
             </p>
           </div>
           {error && <PreviewNotice>{error}</PreviewNotice>}
           
           {mode === 'login' && (
             <form onSubmit={submitLogin}>
-              {providers.entra.enabled && (
-                <a
-                  className="button button--outline"
-                  href={`/api/auth/entra/login?returnTo=${encodeURIComponent(entraReturnTo)}`}
-                >
-                  Sign in with Microsoft
-                </a>
-              )}
               <label className="form-field form-field--with-icon">
                 <span>Email address</span>
                 <div>
@@ -159,7 +146,7 @@ export function AuthPage() {
                     type="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    placeholder="candidate@morrow.demo"
+                    placeholder="you@example.com"
                     autoComplete="username"
                   />
                 </div>
@@ -173,7 +160,7 @@ export function AuthPage() {
                     type="password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Demo account password"
+                    placeholder="Your password"
                     autoComplete="current-password"
                   />
                 </div>
@@ -184,23 +171,94 @@ export function AuthPage() {
             </form>
           )}
 
-          <fieldset className="account-type" disabled={busy}>
-            <legend>Quick demo access</legend>
-            <button
-              className="button button--outline"
-              type="button"
-              onClick={() => continueAs('candidate')}
-            >
-              <UserRound size={17} /> Continue as candidate
-            </button>
-            <button
-              className="button button--outline"
-              type="button"
-              onClick={() => continueAs('employer')}
-            >
-              Continue as employer
-            </button>
-          </fieldset>
+          {mode === 'signup' && (
+            <form onSubmit={submitSignup}>
+              <fieldset className="account-type" disabled={busy}>
+                <legend>I am signing up as</legend>
+                <label>
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value="candidate"
+                    checked={accountType === 'candidate'}
+                    onChange={() => setAccountType('candidate')}
+                  />
+                  <UserRound size={17} /> Candidate
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="accountType"
+                    value="employer"
+                    checked={accountType === 'employer'}
+                    onChange={() => setAccountType('employer')}
+                  />
+                  <Building2 size={17} /> Employer
+                </label>
+              </fieldset>
+              <label className="form-field form-field--with-icon">
+                <span>Full name</span>
+                <div>
+                  <UserRound size={18} />
+                  <input
+                    required
+                    maxLength={80}
+                    value={displayName}
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    autoComplete="name"
+                  />
+                </div>
+              </label>
+              {accountType === 'employer' && (
+                <label className="form-field form-field--with-icon">
+                  <span>Company name</span>
+                  <div>
+                    <Building2 size={18} />
+                    <input
+                      required
+                      maxLength={100}
+                      value={companyName}
+                      onChange={(event) => setCompanyName(event.target.value)}
+                      autoComplete="organization"
+                    />
+                  </div>
+                </label>
+              )}
+              <label className="form-field form-field--with-icon">
+                <span>Email address</span>
+                <div>
+                  <Mail size={18} />
+                  <input
+                    required
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                  />
+                </div>
+              </label>
+              <label className="form-field form-field--with-icon">
+                <span>Password</span>
+                <div>
+                  <LockKeyhole size={18} />
+                  <input
+                    required
+                    type="password"
+                    minLength={8}
+                    maxLength={128}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="At least 8 characters"
+                    autoComplete="new-password"
+                  />
+                </div>
+              </label>
+              <button className="button button--dark" type="submit" disabled={busy}>
+                {busy ? 'Creating account…' : 'Create account'}
+              </button>
+            </form>
+          )}
         </div>
       </section>
     </main>

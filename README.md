@@ -1,6 +1,6 @@
 # Morrow
 
-Morrow is a local React/Vite concept for a student and graduate opportunity network. Most pages contain sample data and interface-only interactions. A local demo authentication and authorization layer is connected; upload, application, analytics, and publishing services are not.
+Morrow is a local React/Vite concept for a student and graduate opportunity network. Most pages contain sample data and interface-only interactions. A local account sign-up, login and authorization layer is connected; upload, application, analytics, and publishing services are not.
 
 The exception is `/discover/certifications`, which is backed by a real crawler service in `server/` that collects public listings from Coursera and Microsoft Learn into SQLite. See [server/README.md](server/README.md) for its crawl policy and provider notes.
 
@@ -28,27 +28,16 @@ npm run dev:api    # API on http://127.0.0.1:8787
 npm run crawl      # populate the database (first run takes a few minutes)
 ```
 
-## Demo accounts
+## Accounts
 
-The API seeds two local accounts on first start. Passwords are stored as scrypt
-hashes in SQLite, and the browser receives an opaque, `HttpOnly` session cookie.
+Create an account from the **Sign up** tab on `/auth`. Choose **Candidate** to
+get a candidate workspace, or **Employer** to create a company organization that
+you own. Passwords are stored as scrypt hashes in SQLite, and the browser
+receives an opaque, `HttpOnly` session cookie.
 
-| Workspace | Email | Password |
-| --- | --- | --- |
-| Candidate | `candidate@morrow.demo` | `CandidateDemo!2026` |
-| Employer | `employer@morrow.demo` | `EmployerDemo!2026` |
-
-The login page also offers one-click access to either persona. Candidate resume
-and recommendation routes and employer candidate/job routes enforce the selected
-account type. Resume and job drafts are saved locally to SQLite but are not
-uploaded or published externally.
-
-Set `MORROW_DEMO_AUTH_ENABLED=0` to disable both seeded-account login paths.
-Microsoft Entra ID OIDC is implemented as an optional authentication provider.
-It remains disabled until `ENTRA_ENABLED=1` and all app-registration values in
-`.env.example` are supplied. The API fails fast on incomplete configuration.
-New Entra identities receive a candidate profile; employer access still requires
-an application-owned organization membership.
+Candidate resume and recommendation routes and employer candidate/job routes
+enforce the account type. Resume and job drafts are saved locally to SQLite but
+are not uploaded or published externally.
 
 ## Run locally with Docker
 

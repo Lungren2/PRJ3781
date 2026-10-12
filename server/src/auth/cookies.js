@@ -1,7 +1,6 @@
 import { config } from '../config.js'
 
 export const SESSION_COOKIE = config.auth.secureCookies ? '__Host-morrow_session' : 'morrow_session'
-export const OIDC_COOKIE = config.auth.secureCookies ? '__Host-morrow_oidc' : 'morrow_oidc'
 
 function appendSetCookie(res, value) {
   const current = res.getHeader('Set-Cookie')
@@ -39,24 +38,6 @@ export function setSessionCookie(res, token, expiresAt) {
 
 export function clearSessionCookie(res) {
   const parts = [`${SESSION_COOKIE}=`, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0']
-  if (config.auth.secureCookies) parts.push('Secure')
-  appendSetCookie(res, parts.join('; '))
-}
-
-export function setOidcCookie(res, binding, expiresAt) {
-  const parts = [
-    `${OIDC_COOKIE}=${encodeURIComponent(binding)}`,
-    'Path=/',
-    'HttpOnly',
-    'SameSite=Lax',
-    `Expires=${new Date(expiresAt).toUTCString()}`,
-  ]
-  if (config.auth.secureCookies) parts.push('Secure')
-  appendSetCookie(res, parts.join('; '))
-}
-
-export function clearOidcCookie(res) {
-  const parts = [`${OIDC_COOKIE}=`, 'Path=/', 'HttpOnly', 'SameSite=Lax', 'Max-Age=0']
   if (config.auth.secureCookies) parts.push('Secure')
   appendSetCookie(res, parts.join('; '))
 }

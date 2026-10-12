@@ -5,7 +5,7 @@ const attempts = new Map()
 export function loginRateLimit(req, res, next) {
   const now = Date.now()
   const windowMs = config.auth.loginWindowMinutes * 60 * 1000
-  const key = `${req.ip}:${String(req.body?.email ?? req.body?.persona ?? '').toLowerCase()}`
+  const key = `${req.ip}:${String(req.body?.email ?? '').toLowerCase()}`
   const current = attempts.get(key)
   if (!current || current.resetAt <= now) {
     attempts.set(key, { count: 1, resetAt: now + windowMs })
@@ -20,6 +20,6 @@ export function loginRateLimit(req, res, next) {
 }
 
 export function clearLoginAttempts(req) {
-  const key = `${req.ip}:${String(req.body?.email ?? req.body?.persona ?? '').toLowerCase()}`
+  const key = `${req.ip}:${String(req.body?.email ?? '').toLowerCase()}`
   attempts.delete(key)
 }

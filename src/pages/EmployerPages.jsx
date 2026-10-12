@@ -227,7 +227,7 @@ export function PostJobPage() {
             }
           }}
         >
-          <PreviewNotice>The draft is saved to your demo organization. No listing will be published.</PreviewNotice>
+          <PreviewNotice>The draft is saved to your organization. No listing will be published.</PreviewNotice>
           <section aria-labelledby="role-basics-title">
             <div className="form-section-heading">
               <span className="step-icon">

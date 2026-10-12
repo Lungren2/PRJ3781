@@ -29,7 +29,9 @@ import {
   SkillTags,
   StatusPill,
 } from '../components/ProductUI.jsx'
-import { courses, hackathons, jobs } from '../data/mockData.js'
+import { jobs } from '../data/mockData.js'
+import { getHackathons } from '../data/hackathons.js'
+import { getCourses } from '../data/courses.js'
 import { useToast } from '../components/ToastContext.jsx'
 import { useAuth } from '../components/AuthContext.jsx'
 import {
@@ -55,12 +57,36 @@ function ModuleStrip({ label, title, copy, status = 'Connection pending', tone =
   )
 }
 
+
 export function CoursesPage() {
   const [category, setCategory] = useState('All courses')
+  const [courses, setCourses] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const toast = useToast()
-  const categories = ['All courses', 'Career skills', 'Workplace tools', 'Portfolio']
+
+  useEffect(() => {
+    getCourses()
+      .then((data) => {
+        setCourses(data)
+      })
+      .catch((err) => {
+        console.error('Failed to load courses:', err)
+        setError('Could not load courses. Please try again later.')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [])
+
+  const categories = [
+    'All courses',
+    ...new Set(courses.map((course) => course.category).filter(Boolean)),
+  ]
+
   const visibleCourses = courses.filter(
-    (course) => category === 'All courses' || course.category === category,
+    (course) =>
+      category === 'All courses' || course.category === category,
   )
 
   return (
@@ -75,6 +101,7 @@ export function CoursesPage() {
           Browse certifications
         </Link>
       </PageIntro>
+
       <div className="page-container courses-layout">
         <section className="course-feature" aria-labelledby="course-feature-title">
           <span className="course-feature__shape" aria-hidden="true">
@@ -84,8 +111,8 @@ export function CoursesPage() {
             <p className="eyebrow">Featured pathway</p>
             <h2 id="course-feature-title">Ready for your first week at work.</h2>
             <p>
-              A compact starter pathway covering communication, feedback, planning, and asking
-              better questions.
+              A compact starter pathway covering communication, feedback,
+              planning, and asking better questions.
             </p>
             <button
               className="button button--white"
@@ -96,48 +123,126 @@ export function CoursesPage() {
             </button>
           </div>
         </section>
+
         <section className="course-library" aria-labelledby="course-library-title">
           <div className="content-heading">
             <div>
               <p className="eyebrow">Course library</p>
               <h2 id="course-library-title">Learn at your pace</h2>
             </div>
+            {!loading && !error && (
+              <StatusPill tone="sage">
+                {courses.length} courses
+              </StatusPill>
+            )}
           </div>
-          <div className="filter-chips" aria-label="Course categories">
-            {categories.map((item) => (
-              <button
-                key={item}
-                type="button"
-                className={category === item ? 'is-active' : ''}
-                aria-pressed={category === item}
-                onClick={() => setCategory(item)}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
+
+          {!loading && !error && courses.length > 0 && (
+            <div className="filter-chips" aria-label="Course categories">
+              {categories.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  className={category === item ? 'is-active' : ''}
+                  aria-pressed={category === item}
+                  onClick={() => setCategory(item)}
+                >
+                  {item}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="course-list">
-            {visibleCourses.map((course, index) => (
-              <article key={course.title}>
-                <span className="course-number">0{index + 1}</span>
+            {loading && (
+              <div className="empty-state">
+                <p>Loading courses...</p>
+              </div>
+            )}
+
+            {!loading && error && (
+              <div className="empty-state">
+                <h2>Courses unavailable</h2>
+                <p>{error}</p>
+                <button
+                  className="button button--outline"
+                  type="button"
+                  onClick={() => {
+                    setLoading(true)
+                    setError('')
+                    getCourses()
+                      .then(setCourses)
+                      .catch((err) => {
+                        console.error('Failed to load courses:', err)
+                        setError('Could not load courses. Please try again later.')
+                      })
+                      .finally(() => setLoading(false))
+                  }}
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {!loading && !error && courses.length === 0 && (
+              <div className="empty-state">
+                <BookOpen size={28} />
+                <h2>No courses found</h2>
+                <p>
+                  No courses were found in the crawler output.
+                  Run the course crawler and try again.
+                </p>
+              </div>
+            )}
+
+            {!loading && !error && courses.length > 0 &&
+              visibleCourses.length === 0 && (
+                <div className="empty-state">
+                  <h2>No courses in this category</h2>
+                  <p>Choose another category to see available courses.</p>
+                </div>
+              )}
+
+            {!loading && !error && visibleCourses.map((course, index) => (
+              <article key={course.id || `${course.title}-${index}`}>
+                <span className="course-number">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+
                 <div className="course-list__copy">
                   <p>{course.category}</p>
                   <h3>{course.title}</h3>
+
                   <span>
-                    {course.length} - {course.level}
+                    {course.provider} · {course.level}
                   </span>
-                  {course.progress > 0 && (
-                    <ProgressBar value={course.progress} label="Preview progress" />
+
+                  <span>
+                    {course.duration} · {course.format} · {course.price}
+                  </span>
+
+                  {course.description && (
+                    <p>{course.description}</p>
+                  )}
+
+                  {course.skills?.length > 0 && (
+                    <SkillTags skills={course.skills} />
                   )}
                 </div>
-                <button
-                  className="icon-button"
-                  type="button"
-                  aria-label={`Open ${course.title}`}
-                  onClick={() => toast('The course lesson view will connect here later.')}
-                >
-                  <ArrowUpRight size={18} />
-                </button>
+
+                {course.courseUrl || course.sourceUrl ? (
+                  <a
+                    className="icon-button"
+                    href={course.courseUrl || course.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`Open ${course.title} (opens in a new tab)`}
+                  >
+                    <ArrowUpRight size={18} />
+                  </a>
+                ) : (
+                  <span>No course link available</span>
+                )}
               </article>
             ))}
           </div>
@@ -200,8 +305,26 @@ export function JobCrawlerPage() {
   )
 }
 
+
 export function HackathonsPage() {
-  const toast = useToast()
+  const [hackathons, setHackathons] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    getHackathons()
+      .then((data) => {
+        setHackathons(data)
+      })
+      .catch((err) => {
+        console.error('Failed to load hackathons:', err)
+        setError('Could not load hackathons. Please try again later.')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }, [])
+
   return (
     <main id="main-content" className="product-page">
       <PageIntro
@@ -210,62 +333,104 @@ export function HackathonsPage() {
         copy="Discover challenges where students can test ideas, meet collaborators, and build something worth showing."
         tone="ink"
       />
+
       <div className="page-container module-page">
         <ModuleStrip
           label="Project module"
           title="Hackathon crawler"
-          copy="Future service: collect public hackathon listings from companies and organisers."
+          copy="Discover hackathons collected from public sources and organisers."
+          status={loading ? 'Loading' : error ? 'Connection issue' : 'Connected'}
+          tone={error ? 'blue' : 'sage'}
         />
-        <PreviewNotice>
-          Events, organisers, and dates are fictional examples for the frontend shell.
-        </PreviewNotice>
+
         <section className="event-list" aria-labelledby="hackathon-list-title">
           <div className="results-toolbar">
             <div>
               <p className="eyebrow">Upcoming events</p>
               <h2 id="hackathon-list-title">Find a challenge</h2>
             </div>
-            <div className="filter-chips">
-              <button className="is-active" type="button">
-                All
-              </button>
-              <button type="button">Virtual</button>
-              <button type="button">In person</button>
-            </div>
           </div>
-          {hackathons.map((event, index) => (
-            <article key={event.name}>
+
+          {loading && <p>Loading hackathons...</p>}
+
+          {!loading && error && (
+            <div className="empty-state">
+              <p>{error}</p>
+            </div>
+          )}
+
+          {!loading && !error && hackathons.length === 0 && (
+            <div className="empty-state">
+              <h2>No hackathons found</h2>
+              <p>
+                No hackathons were found in the crawler output.
+                Run the crawler and try again.
+              </p>
+            </div>
+          )}
+
+          {!loading && !error && hackathons.map((event) => (
+            <article key={event.id}>
               <div className="event-date">
-                <span>AUG</span>
-                <strong>{22 + index * 7}</strong>
+                <CalendarDays size={22} />
               </div>
+
               <div className="event-main">
-                <p>{event.theme}</p>
-                <h3>{event.name}</h3>
-                <span>By {event.organiser}</span>
+                <p>
+                  {Array.isArray(event.themes)
+                    ? event.themes.join(', ')
+                    : event.themes || 'Hackathon'}
+                </p>
+
+                <h3>{event.title}</h3>
+                <span>By {event.organizer}</span>
+
                 <div>
                   <span>
-                    <CalendarDays size={15} /> {event.date}
+                    <CalendarDays size={15} /> {event.startDate}
+                    {event.endDate !== 'Not specified'
+                      ? ` – ${event.endDate}`
+                      : ''}
                   </span>
+
                   <span>
                     <MapPin size={15} /> {event.location}
                   </span>
+
                   <span>
                     <Globe2 size={15} /> {event.format}
                   </span>
                 </div>
+
+                <p>{event.description}</p>
               </div>
+
               <div className="event-side">
-                <StatusPill tone={index === 0 ? 'coral' : 'sage'}>{event.deadline}</StatusPill>
-                <button
-                  className="text-action"
-                  type="button"
-                  onClick={() =>
-                    toast('The event detail and registration flow will connect here later.')
-                  }
-                >
-                  View event <ArrowUpRight size={16} />
-                </button>
+                <StatusPill tone="sage">
+                  Deadline: {event.registrationDeadline}
+                </StatusPill>
+
+                {event.registrationUrl ? (
+                  <a
+                    className="text-action"
+                    href={event.registrationUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Register / View event <ArrowUpRight size={16} />
+                  </a>
+                ) : event.sourceUrl ? (
+                  <a
+                    className="text-action"
+                    href={event.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    View event <ArrowUpRight size={16} />
+                  </a>
+                ) : (
+                  <span>No event link available</span>
+                )}
               </div>
             </article>
           ))}
@@ -274,7 +439,6 @@ export function HackathonsPage() {
     </main>
   )
 }
-
 // Mirrors the server-side vocabulary in server/src/normalize/taxonomy.js.
 const SKILL_LABELS = {
   'software-development': 'Software development',

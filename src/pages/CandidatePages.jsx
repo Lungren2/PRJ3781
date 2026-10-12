@@ -177,13 +177,13 @@ export function ResumePage() {
                 method: 'PUT',
                 body: JSON.stringify({ draft: { ...values, fileName } }),
               })
-              toast('Resume profile draft saved to your demo account.')
+              toast('Resume profile draft saved to your account.')
             } catch (error) {
               toast(`Could not save resume draft: ${error.message}`)
             }
           }}
         >
-          <PreviewNotice>The selected file stays in the browser. Its filename and your answers are saved to your local demo account.</PreviewNotice>
+          <PreviewNotice>The selected file stays in the browser. Its filename and your answers are saved to your account.</PreviewNotice>
           <section aria-labelledby="resume-upload-title">
             <div className="form-section-heading">
               <span className="step-icon">

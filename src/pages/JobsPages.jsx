@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowRight, FileText, SlidersHorizontal, Sparkles } from 'lucide-react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
@@ -9,7 +9,7 @@ import {
   SearchPanel,
   StatusPill,
 } from '../components/ProductUI.jsx'
-import { jobs } from '../data/mockData.js'
+import { getJobs } from '../data/jobs.js'
 import { useToast } from '../components/ToastContext.jsx'
 
 const jobTypes = ['All', 'Part-time', 'Internship', 'Entry level']
@@ -21,7 +21,13 @@ export function JobsPage({ preset = 'All' }) {
   const [type, setType] = useState(preset)
   const [mode, setMode] = useState('All setups')
   const [sort, setSort] = useState('Most recent')
+  const [jobs, setJobs] = useState([])
   const toast = useToast()
+
+  //Load the jobs from jobs.json
+  useEffect(() => {
+    getJobs().then(setJobs)
+  }, [])
 
   const results = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase()
@@ -39,7 +45,7 @@ export function JobsPage({ preset = 'All' }) {
 
     if (sort === 'Best match') return [...filtered].sort((a, b) => b.match - a.match)
     return filtered
-  }, [keyword, location, type, mode, sort])
+  }, [jobs, keyword, location, type, mode, sort])
 
   const title = preset === 'All' ? 'Active jobs' : `${preset} opportunities`
 
@@ -66,7 +72,7 @@ export function JobsPage({ preset = 'All' }) {
             if (keyword) nextParams.set('query', keyword)
             if (location) nextParams.set('location', location)
             setSearchParams(nextParams)
-            toast(`${results.length} sample job${results.length === 1 ? '' : 's'} found.`)
+            toast(`${results.length} job${results.length === 1 ? '' : 's'} found.`)
           }}
         >
           <div className="filter-chips" aria-label="Job type filters">
@@ -96,15 +102,14 @@ export function JobsPage({ preset = 'All' }) {
         </SearchPanel>
 
         <PreviewNotice>
-          Search and filters work against mock listings in this frontend. No crawler or database is
-          connected yet.
+          Search and filters work against live crawled listings from jobs.json.
         </PreviewNotice>
 
         <section className="results-section" aria-labelledby="job-results-title">
           <div className="results-toolbar">
             <div>
               <p className="eyebrow">Current results</p>
-              <h2 id="job-results-title">{results.length} sample jobs</h2>
+              <h2 id="job-results-title">{results.length} jobs</h2>
             </div>
             <label className="sort-control">
               <SlidersHorizontal size={16} aria-hidden="true" />
@@ -123,6 +128,13 @@ export function JobsPage({ preset = 'All' }) {
 }
 
 export function RecommendedJobsPage() {
+  const [jobs, setJobs] = useState([])
+
+  //Load the jobs from jobs.json
+  useEffect(() => {
+    getJobs().then(setJobs)
+  }, [])
+
   return (
     <main id="main-content" className="product-page">
       <PageIntro

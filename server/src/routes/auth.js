@@ -1,23 +1,20 @@
 import express from 'express'
-import { config } from '../config.js'
-import {
-  clearOidcCookie,
-  clearSessionCookie,
-  OIDC_COOKIE,
-  readCookie,
-  setOidcCookie,
-  setSessionCookie,
-} from '../auth/cookies.js'
+import { clearSessionCookie, setSessionCookie } from '../auth/cookies.js'
 import { requireCsrf } from '../auth/middleware.js'
 import { verifyPassword } from '../auth/passwords.js'
 import { clearLoginAttempts, loginRateLimit } from '../auth/rate-limit.js'
 import {
+  createAccount,
   createSession,
   deleteSession,
-  findDemoUser,
+  EmailTakenError,
   findUserByEmail,
   publicUser,
 } from '../auth/repository.js'
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const MIN_PASSWORD_LENGTH = 8
+const MAX_PASSWORD_LENGTH = 128
 
 function startSession(req, res, user) {
   // Re-authentication always replaces the browser's previous session.
@@ -27,74 +24,63 @@ function startSession(req, res, user) {
   return { user: publicUser(user), csrfToken: session.csrfToken }
 }
 
-export function createAuthRouter({ entraProvider }) {
-  const authRouter = express.Router()
+const text = (value) => (typeof value === 'string' ? value.trim() : '')
 
-  authRouter.get('/providers', (req, res) => {
-    res.json({
-      demo: { enabled: config.auth.demoEnabled },
-      entra: {
-        enabled: entraProvider.enabled,
-        configured: entraProvider.configured,
-        status: entraProvider.status,
-      },
-    })
-  })
+function readSignup(body) {
+  const signup = {
+    email: text(body?.email).toLowerCase(),
+    password: typeof body?.password === 'string' ? body.password : '',
+    displayName: text(body?.displayName),
+    accountType: body?.accountType,
+    companyName: text(body?.companyName),
+  }
+  if (!EMAIL_PATTERN.test(signup.email) || signup.email.length > 254) {
+    return { error: 'enter a valid email address' }
+  }
+  if (signup.password.length < MIN_PASSWORD_LENGTH || signup.password.length > MAX_PASSWORD_LENGTH) {
+    return { error: `password must be ${MIN_PASSWORD_LENGTH} to ${MAX_PASSWORD_LENGTH} characters` }
+  }
+  if (!signup.displayName || signup.displayName.length > 80) {
+    return { error: 'name is required (up to 80 characters)' }
+  }
+  if (!['candidate', 'employer'].includes(signup.accountType)) {
+    return { error: 'account type must be candidate or employer' }
+  }
+  if (signup.accountType === 'employer' && (!signup.companyName || signup.companyName.length > 100)) {
+    return { error: 'company name is required (up to 100 characters)' }
+  }
+  return { signup }
+}
+
+export function createAuthRouter() {
+  const authRouter = express.Router()
 
   authRouter.get('/me', (req, res) => {
     res.json({ user: req.user, csrfToken: req.auth?.csrfToken ?? null })
   })
 
+  authRouter.post('/signup', loginRateLimit, (req, res) => {
+    const { signup, error } = readSignup(req.body)
+    if (error) return res.status(400).json({ error })
+    try {
+      const user = createAccount(signup)
+      clearLoginAttempts(req)
+      return res.status(201).json(startSession(req, res, user))
+    } catch (createError) {
+      if (createError instanceof EmailTakenError) {
+        return res.status(409).json({ error: 'an account with this email already exists' })
+      }
+      throw createError
+    }
+  })
+
   authRouter.post('/login', loginRateLimit, (req, res) => {
-    if (!config.auth.demoEnabled) return res.status(404).json({ error: 'demo authentication is disabled' })
     const user = findUserByEmail(req.body?.email)
     if (!user || !verifyPassword(req.body?.password, user.password_hash)) {
       return res.status(401).json({ error: 'invalid email or password' })
     }
     clearLoginAttempts(req)
     return res.json(startSession(req, res, user))
-  })
-
-  authRouter.post('/demo-login', loginRateLimit, (req, res) => {
-    if (!config.auth.demoEnabled) return res.status(404).json({ error: 'demo authentication is disabled' })
-    const user = findDemoUser(req.body?.persona)
-    if (!user) return res.status(400).json({ error: 'persona must be candidate or employer' })
-    clearLoginAttempts(req)
-    return res.json(startSession(req, res, user))
-  })
-
-  authRouter.get('/entra/login', async (req, res) => {
-    if (!entraProvider.enabled) return res.status(503).json({ error: 'Entra authentication is unavailable' })
-    try {
-      const transaction = await entraProvider.begin(req.query.returnTo)
-      setOidcCookie(res, transaction.binding, transaction.expiresAt)
-      return res.redirect(transaction.url)
-    } catch (error) {
-      return res.status(error.status || 502).json({ error: 'Could not start Entra authentication', code: error.code })
-    }
-  })
-
-  authRouter.get('/entra/callback', async (req, res) => {
-    if (!entraProvider.enabled) return res.status(503).json({ error: 'Entra authentication is unavailable' })
-    const binding = readCookie(req, OIDC_COOKIE)
-    try {
-      if (req.query.error) {
-        entraProvider.cancel({ state: req.query.state, binding })
-        clearOidcCookie(res)
-        return res.status(400).json({ error: 'Entra authentication was not completed', code: 'provider_error' })
-      }
-      const result = await entraProvider.complete({
-        state: req.query.state,
-        binding,
-        code: req.query.code,
-      })
-      clearOidcCookie(res)
-      startSession(req, res, result.user)
-      return res.redirect(result.returnTo)
-    } catch (error) {
-      clearOidcCookie(res)
-      return res.status(error.status || 400).json({ error: 'Entra authentication failed', code: error.code })
-    }
   })
 
   authRouter.post('/logout', requireCsrf, (req, res) => {

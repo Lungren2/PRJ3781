@@ -8,11 +8,13 @@
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "crawl": "node src/crawl/cli.js",
+    "crawl:jobs": "node src/crawl/jobCrawler.js",
+    "crawl:hackathons": "node src/crawl/hackathonCrawler.js",
     "export": "node src/crawl/export.js",
     "test": "node --test src/**/*.test.js"
   },
   "dependencies": {
-    "@azure/msal-node": "^6.0.0",
+    "@mendable/firecrawl-js": "^4.35.0",
     "better-sqlite3": "^11.7.0",
     "cheerio": "^1.2.0",
     "cors": "^2.8.5",

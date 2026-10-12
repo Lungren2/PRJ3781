@@ -291,13 +291,13 @@ function Header() {
                   <LogIn size={16} aria-hidden="true" /> Log in
                 </Link>
                 <Link className="button button--signup" to="/auth?mode=signup">
-                  Demo access <ArrowRight size={16} aria-hidden="true" />
+                  Sign up <ArrowRight size={16} aria-hidden="true" />
                 </Link>
               </>}
             </div>
             {!menuOpen && !user && (
               <Link className="button button--signup mobile-signup" to="/auth?mode=signup">
-                Demo access
+                Sign up
               </Link>
             )}
             <button
@@ -356,7 +356,7 @@ function Header() {
                     to="/auth?mode=signup"
                     onClick={() => setMenuOpen(false)}
                   >
-                    <UserPlus size={16} aria-hidden="true" /> Demo access
+                    <UserPlus size={16} aria-hidden="true" /> Sign up
                   </Link>
                 </>
               )}

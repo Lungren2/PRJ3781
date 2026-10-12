@@ -6,8 +6,8 @@ import test, { after } from 'node:test'
 
 const testDir = fs.mkdtempSync(path.join(os.tmpdir(), 'morrow-auth-'))
 process.env.MORROW_DB_PATH = path.join(testDir, 'auth.db')
-process.env.MORROW_DEMO_AUTH_ENABLED = '1'
 process.env.MORROW_CRAWL_SCHEDULE_ENABLED = '0'
+process.env.MORROW_LOGIN_MAX_ATTEMPTS = '1000'
 
 const [{ createApp }, { closeDb, getDb }, policies] = await Promise.all([
   import('../app.js'),
@@ -38,9 +38,23 @@ async function request(pathname, { cookie, csrfToken, body, ...options } = {}) {
   })
 }
 
-async function demoLogin(persona) {
-  const response = await request('/api/auth/demo-login', { method: 'POST', body: { persona } })
-  assert.equal(response.status, 200)
+let accountCount = 0
+const PASSWORD = 'correct horse battery'
+
+async function signup(accountType, overrides = {}) {
+  accountCount += 1
+  const response = await request('/api/auth/signup', {
+    method: 'POST',
+    body: {
+      email: `${accountType}${accountCount}@example.com`,
+      password: PASSWORD,
+      displayName: `Test ${accountType}`,
+      accountType,
+      companyName: accountType === 'employer' ? `Company ${accountCount}` : undefined,
+      ...overrides,
+    },
+  })
+  assert.equal(response.status, 201)
   const data = await response.json()
   return {
     cookie: response.headers.get('set-cookie').split(';', 1)[0],
@@ -55,37 +69,103 @@ test('public catalogue stays public while candidate resources require authentica
   assert.equal((await request('/api/candidate/resume')).status, 401)
 })
 
-test('provider discovery advertises Entra as disabled until configured', async () => {
-  const response = await request('/api/auth/providers')
-  assert.equal(response.status, 200)
-  const providers = await response.json()
-  assert.equal(providers.demo.enabled, true)
-  assert.equal(providers.entra.enabled, false)
-  assert.equal(providers.entra.status, 'disabled')
-  assert.equal((await request('/api/auth/entra/login')).status, 503)
+test('demo and Entra login routes are gone', async () => {
+  const demo = await request('/api/auth/demo-login', { method: 'POST', body: { persona: 'candidate' } })
+  assert.equal(demo.status, 404)
+  assert.equal((await request('/api/auth/entra/login')).status, 404)
+  assert.equal((await request('/api/auth/providers')).status, 404)
 })
 
-test('password login verifies seeded password hashes without exposing them', async () => {
+test('legacy demo accounts are removed from existing databases', async () => {
+  const db = getDb()
+  const createdAt = new Date().toISOString()
+  db.prepare(`
+    INSERT INTO users (id, email, password_hash, display_name, status, created_at)
+    VALUES ('demo-candidate', 'candidate@morrow.demo', 'x', 'Demo', 'active', ?)
+  `).run(createdAt)
+  db.prepare("INSERT INTO organizations (id, name, created_at) VALUES ('demo-org', 'Demo', ?)").run(createdAt)
+
+  const { removeLegacyDemoAccounts } = await import('./repository.js')
+  removeLegacyDemoAccounts()
+  assert.equal(db.prepare("SELECT 1 FROM users WHERE id = 'demo-candidate'").get(), undefined)
+  assert.equal(db.prepare("SELECT 1 FROM organizations WHERE id = 'demo-org'").get(), undefined)
+})
+
+test('candidate sign-up creates a candidate account and signs it in', async () => {
+  const candidate = await signup('candidate')
+  assert.equal(candidate.user.isCandidate, true)
+  assert.deepEqual(candidate.user.organizations, [])
+  assert.equal('passwordHash' in candidate.user, false)
+
+  const me = await (await request('/api/auth/me', { cookie: candidate.cookie })).json()
+  assert.equal(me.user.id, candidate.user.id)
+  const stored = getDb().prepare('SELECT password_hash FROM users WHERE id = ?').get(candidate.user.id)
+  assert.match(stored.password_hash, /^scrypt\$/)
+  assert.equal(stored.password_hash.includes(PASSWORD), false)
+})
+
+test('employer sign-up creates an organization owned by the new user', async () => {
+  const employer = await signup('employer', { companyName: 'Acme Ltd' })
+  assert.equal(employer.user.isCandidate, false)
+  assert.equal(employer.user.organizations.length, 1)
+  assert.equal(employer.user.organizations[0].name, 'Acme Ltd')
+  assert.equal(employer.user.organizations[0].role, 'owner')
+})
+
+test('sign-up validates input and rejects duplicate emails', async () => {
+  const valid = {
+    email: 'validation@example.com',
+    password: PASSWORD,
+    displayName: 'Valid Name',
+    accountType: 'candidate',
+  }
+  const invalid = [
+    { ...valid, email: 'not-an-email' },
+    { ...valid, password: 'short' },
+    { ...valid, displayName: '   ' },
+    { ...valid, accountType: 'admin' },
+    { ...valid, accountType: 'employer' },
+  ]
+  for (const body of invalid) {
+    const response = await request('/api/auth/signup', { method: 'POST', body })
+    assert.equal(response.status, 400, JSON.stringify(body))
+  }
+
+  assert.equal((await request('/api/auth/signup', { method: 'POST', body: valid })).status, 201)
+  const duplicate = await request('/api/auth/signup', {
+    method: 'POST',
+    body: { ...valid, email: 'Validation@Example.com' },
+  })
+  assert.equal(duplicate.status, 409)
+})
+
+test('password login works for signed-up accounts without exposing the hash', async () => {
+  const candidate = await signup('candidate')
   const rejected = await request('/api/auth/login', {
     method: 'POST',
-    body: { email: 'candidate@morrow.demo', password: 'wrong-password' },
+    body: { email: candidate.user.email, password: 'wrong-password' },
   })
   assert.equal(rejected.status, 401)
 
   const accepted = await request('/api/auth/login', {
     method: 'POST',
-    body: { email: 'candidate@morrow.demo', password: 'CandidateDemo!2026' },
+    body: { email: candidate.user.email.toUpperCase(), password: PASSWORD },
   })
   assert.equal(accepted.status, 200)
   const data = await accepted.json()
-  assert.equal(data.user.email, 'candidate@morrow.demo')
+  assert.equal(data.user.id, candidate.user.id)
   assert.equal('passwordHash' in data.user, false)
 })
 
 test('candidate access is scoped and authenticated writes require CSRF', async () => {
-  const candidate = await demoLogin('candidate')
+  const candidate = await signup('candidate')
+  const employer = await signup('employer')
+  const organizationId = employer.user.organizations[0].id
   assert.equal((await request('/api/candidate/resume', { cookie: candidate.cookie })).status, 200)
-  assert.equal((await request('/api/organizations/demo-org/candidates', { cookie: candidate.cookie })).status, 403)
+  assert.equal(
+    (await request(`/api/organizations/${organizationId}/candidates`, { cookie: candidate.cookie })).status,
+    403,
+  )
 
   const rejected = await request('/api/candidate/resume', {
     method: 'PUT',
@@ -105,11 +185,17 @@ test('candidate access is scoped and authenticated writes require CSRF', async (
 })
 
 test('employer access is limited to its organization', async () => {
-  const employer = await demoLogin('employer')
+  const employer = await signup('employer')
+  const other = await signup('employer')
+  const organizationId = employer.user.organizations[0].id
+  const otherOrganizationId = other.user.organizations[0].id
   assert.equal((await request('/api/candidate/resume', { cookie: employer.cookie })).status, 403)
-  assert.equal((await request('/api/organizations/demo-org/candidates', { cookie: employer.cookie })).status, 200)
+  assert.equal(
+    (await request(`/api/organizations/${organizationId}/candidates`, { cookie: employer.cookie })).status,
+    200,
+  )
 
-  const created = await request('/api/organizations/demo-org/jobs', {
+  const created = await request(`/api/organizations/${organizationId}/jobs`, {
     method: 'POST',
     cookie: employer.cookie,
     csrfToken: employer.csrfToken,
@@ -117,15 +203,15 @@ test('employer access is limited to its organization', async () => {
   })
   assert.equal(created.status, 201)
 
-  const db = getDb()
-  db.prepare('INSERT INTO organizations (id, name, created_at) VALUES (?, ?, ?)')
-    .run('other-org', 'Other Company', new Date().toISOString())
-  db.prepare(`
-    INSERT INTO job_drafts (id, organization_id, created_by, draft, updated_at)
-    VALUES (?, ?, ?, ?, ?)
-  `).run('other-job', 'other-org', employer.user.id, '{}', new Date().toISOString())
+  const otherJob = await request(`/api/organizations/${otherOrganizationId}/jobs`, {
+    method: 'POST',
+    cookie: other.cookie,
+    csrfToken: other.csrfToken,
+    body: { draft: { title: 'Theirs' } },
+  })
+  const { id: otherJobId } = await otherJob.json()
 
-  const crossOrganization = await request('/api/organizations/other-org/jobs/other-job', {
+  const crossOrganization = await request(`/api/organizations/${otherOrganizationId}/jobs/${otherJobId}`, {
     method: 'PATCH',
     cookie: employer.cookie,
     csrfToken: employer.csrfToken,
@@ -135,12 +221,12 @@ test('employer access is limited to its organization', async () => {
 })
 
 test('expired and logged-out sessions are rejected', async () => {
-  const expired = await demoLogin('candidate')
+  const expired = await signup('candidate')
   getDb().prepare("UPDATE sessions SET expires_at = '2000-01-01T00:00:00.000Z' WHERE user_id = ?")
     .run(expired.user.id)
   assert.equal((await request('/api/candidate/resume', { cookie: expired.cookie })).status, 401)
 
-  const active = await demoLogin('employer')
+  const active = await signup('employer')
   const logout = await request('/api/auth/logout', {
     method: 'POST',
     cookie: active.cookie,

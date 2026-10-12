@@ -18,10 +18,6 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [csrfToken, setCsrfToken] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [providers, setProviders] = useState({
-    demo: { enabled: true },
-    entra: { enabled: false, configured: false, status: 'loading' },
-  })
 
   const applyAuth = useCallback((data) => {
     setUser(data?.user ?? null)
@@ -45,15 +41,6 @@ export function AuthProvider({ children }) {
     }
   }, [applyAuth])
 
-  useEffect(() => {
-    const controller = new AbortController()
-    fetch('/api/auth/providers', { signal: controller.signal })
-      .then(parseResponse)
-      .then(setProviders)
-      .catch(() => {})
-    return () => controller.abort()
-  }, [])
-
   const authenticate = useCallback(async (path, body) => {
     const data = await fetch(path, {
       method: 'POST',
@@ -67,8 +54,8 @@ export function AuthProvider({ children }) {
     (email, password) => authenticate('/api/auth/login', { email, password }),
     [authenticate],
   )
-  const demoLogin = useCallback(
-    (persona) => authenticate('/api/auth/demo-login', { persona }),
+  const signup = useCallback(
+    (details) => authenticate('/api/auth/signup', details),
     [authenticate],
   )
 
@@ -92,8 +79,8 @@ export function AuthProvider({ children }) {
     return fetch(path, { ...options, headers }).then(parseResponse)
   }, [csrfToken])
 
-  const value = useMemo(() => ({ user, loading, providers, login, demoLogin, logout, apiFetch }), [
-    user, loading, providers, login, demoLogin, logout, apiFetch,
+  const value = useMemo(() => ({ user, loading, login, signup, logout, apiFetch }), [
+    user, loading, login, signup, logout, apiFetch,
   ])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

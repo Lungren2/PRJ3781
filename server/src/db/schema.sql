@@ -1,8 +1,7 @@
 PRAGMA journal_mode = WAL;
 PRAGMA foreign_keys = ON;
 
--- Demo identity data. Authentication is deliberately provider-neutral so an
--- Entra/OIDC identity can be linked to the same application user later.
+-- Accounts. Passwords are stored as scrypt hashes; see auth/passwords.js.
 CREATE TABLE IF NOT EXISTS users (
   id            TEXT PRIMARY KEY,
   email         TEXT NOT NULL UNIQUE COLLATE NOCASE,
@@ -31,9 +30,6 @@ CREATE TABLE IF NOT EXISTS auth_identities (
 );
 
 CREATE INDEX IF NOT EXISTS idx_auth_identities_user ON auth_identities (user_id);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_auth_identities_entra_object
-  ON auth_identities (provider, tenant_id, object_id)
-  WHERE tenant_id IS NOT NULL AND object_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS organizations (
   id          TEXT PRIMARY KEY,
@@ -58,18 +54,6 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions (expires_at);
-
-CREATE TABLE IF NOT EXISTS oidc_transactions (
-  state_hash    TEXT PRIMARY KEY,
-  binding_hash  TEXT NOT NULL,
-  nonce         TEXT NOT NULL,
-  code_verifier TEXT NOT NULL,
-  return_to     TEXT NOT NULL,
-  created_at    TEXT NOT NULL,
-  expires_at    TEXT NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS idx_oidc_transactions_expiry ON oidc_transactions (expires_at);
 
 CREATE TABLE IF NOT EXISTS resumes (
   user_id     TEXT PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
