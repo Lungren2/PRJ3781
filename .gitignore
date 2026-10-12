@@ -8,6 +8,7 @@ dist
 .env
 .env.*
 !.env.example
+jobCrawler.env
 
 # SQLite record store, wherever MORROW_DB_PATH points (-wal/-shm are WAL sidecars).
 *.db
