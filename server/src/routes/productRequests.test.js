@@ -104,7 +104,10 @@ test('active product repository exposes one asynchronous storage contract', asyn
     productRepository.getAllProductRequests({ department: 'Design' }),
     'getAllProductRequests',
   )
-  assert.equal(listed.some((item) => item.id === created.id), true)
+  assert.equal(
+    listed.some((item) => item.id === created.id),
+    true,
+  )
 
   const detail = await assertPromise(
     productRepository.getProductRequestById(created.id),
@@ -194,12 +197,18 @@ test('product request filtering remains storage-neutral', async () => {
   const matchingResponse = await request('/api/product-requests?department=Marketing')
   assert.equal(matchingResponse.status, 200)
   const matching = await matchingResponse.json()
-  assert.equal(matching.some((item) => item.id === created.id), true)
+  assert.equal(
+    matching.some((item) => item.id === created.id),
+    true,
+  )
 
   const excludedResponse = await request('/api/product-requests?department=Computer%20Science')
   assert.equal(excludedResponse.status, 200)
   const excluded = await excludedResponse.json()
-  assert.equal(excluded.some((item) => item.id === created.id), false)
+  assert.equal(
+    excluded.some((item) => item.id === created.id),
+    false,
+  )
 })
 
 test('candidate applications use the signed-in Morrow user and remain idempotent', async () => {
@@ -372,10 +381,12 @@ test('role changes and revocation take effect without granting cross-organizatio
   const candidate = await signup('candidate')
   const organizationId = owner.user.organizations[0].id
   const db = getDb()
-  db.prepare('INSERT INTO organization_memberships (user_id, organization_id, role) VALUES (?, ?, ?)')
-    .run(recruiter.user.id, organizationId, 'recruiter')
-  db.prepare('INSERT INTO organization_memberships (user_id, organization_id, role) VALUES (?, ?, ?)')
-    .run(viewer.user.id, organizationId, 'viewer')
+  db.prepare(
+    'INSERT INTO organization_memberships (user_id, organization_id, role) VALUES (?, ?, ?)',
+  ).run(recruiter.user.id, organizationId, 'recruiter')
+  db.prepare(
+    'INSERT INTO organization_memberships (user_id, organization_id, role) VALUES (?, ?, ?)',
+  ).run(viewer.user.id, organizationId, 'viewer')
 
   const recruitCreated = await request('/api/product-requests', {
     method: 'POST',
@@ -391,39 +402,107 @@ test('role changes and revocation take effect without granting cross-organizatio
   assert.equal(recruitCreated.status, 201)
   const project = await recruitCreated.json()
 
-  assert.equal((await request('/api/product-requests/' + project.id + '/assign', {
-    method: 'PUT',
-    cookie: candidate.cookie,
-    csrfToken: candidate.csrfToken,
-  })).status, 200)
+  assert.equal(
+    (
+      await request('/api/product-requests/' + project.id + '/assign', {
+        method: 'PUT',
+        cookie: candidate.cookie,
+        csrfToken: candidate.csrfToken,
+      })
+    ).status,
+    200,
+  )
 
   for (const actor of [owner, recruiter]) {
-    const detail = await (await request('/api/product-requests/' + project.id, {
-      cookie: actor.cookie,
-    })).json()
+    const detail = await (
+      await request('/api/product-requests/' + project.id, {
+        cookie: actor.cookie,
+      })
+    ).json()
     assert.equal(detail.assignedStudents[0].email, candidate.user.email)
   }
   for (const actor of [viewer, outsider, candidate]) {
-    const detail = await (await request('/api/product-requests/' + project.id, {
-      cookie: actor.cookie,
-    })).json()
+    const detail = await (
+      await request('/api/product-requests/' + project.id, {
+        cookie: actor.cookie,
+      })
+    ).json()
     assert.equal('assignedStudents' in detail, false)
   }
 
   for (const actor of [viewer, outsider, candidate]) {
-    assert.equal((await request('/api/product-requests/' + project.id, {
-      method: 'PUT',
-      cookie: actor.cookie,
-      csrfToken: actor.csrfToken,
-      body: { title: 'Forbidden' },
-    })).status, 403)
+    assert.equal(
+      (
+        await request('/api/product-requests/' + project.id, {
+          method: 'PUT',
+          cookie: actor.cookie,
+          csrfToken: actor.csrfToken,
+          body: { title: 'Forbidden' },
+        })
+      ).status,
+      403,
+    )
+    assert.equal(
+      (
+        await request('/api/product-requests/' + project.id + '/status', {
+          method: 'PUT',
+          cookie: actor.cookie,
+          csrfToken: actor.csrfToken,
+          body: { status: 'Completed' },
+        })
+      ).status,
+      403,
+    )
+    assert.equal(
+      (
+        await request('/api/product-requests/' + project.id, {
+          method: 'DELETE',
+          cookie: actor.cookie,
+          csrfToken: actor.csrfToken,
+        })
+      ).status,
+      403,
+    )
   }
-  assert.equal((await request('/api/product-requests/' + project.id, {
-    method: 'PUT',
-    cookie: recruiter.cookie,
-    csrfToken: recruiter.csrfToken,
-    body: { title: 'Recruiter updated' },
-  })).status, 200)
+  assert.equal(
+    (
+      await request('/api/product-requests/' + project.id, {
+        method: 'PUT',
+        cookie: recruiter.cookie,
+        csrfToken: recruiter.csrfToken,
+        body: {
+          title: 'Recruiter updated',
+          organizationId: outsider.user.organizations[0].id,
+          createdBy: outsider.user.id,
+        },
+      })
+    ).status,
+    200,
+  )
+  const unchangedScope = await productRepository.getProductRequestById(project.id)
+  assert.equal(unchangedScope.organizationId, organizationId)
+  assert.equal(unchangedScope.createdBy.id, recruiter.user.id)
+  assert.equal(
+    (
+      await request('/api/product-requests/' + project.id + '/status', {
+        method: 'PUT',
+        cookie: recruiter.cookie,
+        body: { status: 'In Progress' },
+      })
+    ).status,
+    403,
+  )
+  assert.equal(
+    (
+      await request('/api/product-requests/' + project.id + '/status', {
+        method: 'PUT',
+        cookie: recruiter.cookie,
+        csrfToken: recruiter.csrfToken,
+        body: { status: 'In Progress' },
+      })
+    ).status,
+    200,
+  )
 
   const forgedOrganization = await request('/api/product-requests', {
     method: 'POST',
@@ -438,20 +517,64 @@ test('role changes and revocation take effect without granting cross-organizatio
   })
   assert.equal(forgedOrganization.status, 403)
 
-  db.prepare('UPDATE organization_memberships SET role = ? WHERE user_id = ? AND organization_id = ?')
-    .run('viewer', recruiter.user.id, organizationId)
-  assert.equal((await request('/api/product-requests/' + project.id, {
-    method: 'DELETE',
-    cookie: recruiter.cookie,
-    csrfToken: recruiter.csrfToken,
-  })).status, 403)
+  db.prepare(
+    'UPDATE organization_memberships SET role = ? WHERE user_id = ? AND organization_id = ?',
+  ).run('viewer', recruiter.user.id, organizationId)
+  const demotedDetail = await (
+    await request('/api/product-requests/' + project.id, {
+      cookie: recruiter.cookie,
+    })
+  ).json()
+  assert.equal('assignedStudents' in demotedDetail, false)
+  assert.equal(
+    (
+      await request('/api/product-requests/' + project.id, {
+        method: 'DELETE',
+        cookie: recruiter.cookie,
+        csrfToken: recruiter.csrfToken,
+      })
+    ).status,
+    403,
+  )
 
-  db.prepare('DELETE FROM organization_memberships WHERE user_id = ? AND organization_id = ?')
-    .run(viewer.user.id, organizationId)
-  assert.equal((await request('/api/product-requests/' + project.id, {
-    method: 'PUT',
-    cookie: viewer.cookie,
-    csrfToken: viewer.csrfToken,
-    body: { title: 'Revoked' },
-  })).status, 403)
+  db.prepare(
+    'UPDATE organization_memberships SET role = ? WHERE user_id = ? AND organization_id = ?',
+  ).run('recruiter', recruiter.user.id, organizationId)
+  const restoredDetail = await (
+    await request('/api/product-requests/' + project.id, {
+      cookie: recruiter.cookie,
+    })
+  ).json()
+  assert.equal(restoredDetail.assignedStudents[0].email, candidate.user.email)
+  db.prepare('DELETE FROM organization_memberships WHERE user_id = ? AND organization_id = ?').run(
+    recruiter.user.id,
+    organizationId,
+  )
+  const revokedDetail = await (
+    await request('/api/product-requests/' + project.id, {
+      cookie: recruiter.cookie,
+    })
+  ).json()
+  assert.equal('assignedStudents' in revokedDetail, false)
+  assert.equal(
+    (
+      await request('/api/product-requests/' + project.id, {
+        method: 'PUT',
+        cookie: recruiter.cookie,
+        csrfToken: recruiter.csrfToken,
+        body: { title: 'Revoked' },
+      })
+    ).status,
+    403,
+  )
+  assert.equal(
+    (
+      await request('/api/product-requests/' + project.id, {
+        method: 'DELETE',
+        cookie: owner.cookie,
+        csrfToken: owner.csrfToken,
+      })
+    ).status,
+    204,
+  )
 })

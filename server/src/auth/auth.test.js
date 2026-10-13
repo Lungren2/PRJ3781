@@ -70,7 +70,10 @@ test('public catalogue stays public while candidate resources require authentica
 })
 
 test('demo and Entra login routes are gone', async () => {
-  const demo = await request('/api/auth/demo-login', { method: 'POST', body: { persona: 'candidate' } })
+  const demo = await request('/api/auth/demo-login', {
+    method: 'POST',
+    body: { persona: 'candidate' },
+  })
   assert.equal(demo.status, 404)
   assert.equal((await request('/api/auth/entra/login')).status, 404)
   assert.equal((await request('/api/auth/providers')).status, 404)
@@ -83,7 +86,9 @@ test('legacy demo accounts are removed from existing databases', async () => {
     INSERT INTO users (id, email, password_hash, display_name, status, created_at)
     VALUES ('demo-candidate', 'candidate@morrow.demo', 'x', 'Demo', 'active', ?)
   `).run(createdAt)
-  db.prepare("INSERT INTO organizations (id, name, created_at) VALUES ('demo-org', 'Demo', ?)").run(createdAt)
+  db.prepare("INSERT INTO organizations (id, name, created_at) VALUES ('demo-org', 'Demo', ?)").run(
+    createdAt,
+  )
 
   const { removeLegacyDemoAccounts } = await import('./repository.js')
   removeLegacyDemoAccounts()
@@ -99,7 +104,9 @@ test('candidate sign-up creates a candidate account and signs it in', async () =
 
   const me = await (await request('/api/auth/me', { cookie: candidate.cookie })).json()
   assert.equal(me.user.id, candidate.user.id)
-  const stored = getDb().prepare('SELECT password_hash FROM users WHERE id = ?').get(candidate.user.id)
+  const stored = getDb()
+    .prepare('SELECT password_hash FROM users WHERE id = ?')
+    .get(candidate.user.id)
   assert.match(stored.password_hash, /^scrypt\$/)
   assert.equal(stored.password_hash.includes(PASSWORD), false)
 })
@@ -163,7 +170,8 @@ test('candidate access is scoped and authenticated writes require CSRF', async (
   const organizationId = employer.user.organizations[0].id
   assert.equal((await request('/api/candidate/resume', { cookie: candidate.cookie })).status, 200)
   assert.equal(
-    (await request(`/api/organizations/${organizationId}/candidates`, { cookie: candidate.cookie })).status,
+    (await request(`/api/organizations/${organizationId}/candidates`, { cookie: candidate.cookie }))
+      .status,
     403,
   )
 
@@ -191,7 +199,8 @@ test('employer access is limited to its organization', async () => {
   const otherOrganizationId = other.user.organizations[0].id
   assert.equal((await request('/api/candidate/resume', { cookie: employer.cookie })).status, 403)
   assert.equal(
-    (await request(`/api/organizations/${organizationId}/candidates`, { cookie: employer.cookie })).status,
+    (await request(`/api/organizations/${organizationId}/candidates`, { cookie: employer.cookie }))
+      .status,
     200,
   )
 
@@ -211,18 +220,207 @@ test('employer access is limited to its organization', async () => {
   })
   const { id: otherJobId } = await otherJob.json()
 
-  const crossOrganization = await request(`/api/organizations/${otherOrganizationId}/jobs/${otherJobId}`, {
-    method: 'PATCH',
-    cookie: employer.cookie,
-    csrfToken: employer.csrfToken,
-    body: { draft: { title: 'Not allowed' } },
-  })
+  const crossOrganization = await request(
+    `/api/organizations/${otherOrganizationId}/jobs/${otherJobId}`,
+    {
+      method: 'PATCH',
+      cookie: employer.cookie,
+      csrfToken: employer.csrfToken,
+      body: { draft: { title: 'Not allowed' } },
+    },
+  )
   assert.equal(crossOrganization.status, 403)
+})
+
+test('job writes enforce live roles and the stored resource organization', async () => {
+  const owner = await signup('employer')
+  const recruiter = await signup('employer')
+  const viewer = await signup('employer')
+  const outsider = await signup('employer')
+  const candidate = await signup('candidate')
+  const organizationId = owner.user.organizations[0].id
+  const db = getDb()
+  const addMembership = db.prepare(
+    'INSERT INTO organization_memberships (user_id, organization_id, role) VALUES (?, ?, ?)',
+  )
+  addMembership.run(recruiter.user.id, organizationId, 'recruiter')
+  addMembership.run(viewer.user.id, organizationId, 'viewer')
+  const jobsPath = `/api/organizations/${organizationId}/jobs`
+
+  for (const actor of [owner, recruiter, viewer]) {
+    assert.equal(
+      (
+        await request(`/api/organizations/${organizationId}/candidates`, {
+          cookie: actor.cookie,
+        })
+      ).status,
+      200,
+    )
+  }
+  assert.equal(
+    (
+      await request(jobsPath, {
+        method: 'POST',
+        body: { draft: { title: 'Anonymous' } },
+      })
+    ).status,
+    401,
+  )
+  for (const actor of [viewer, outsider, candidate]) {
+    assert.equal(
+      (
+        await request(jobsPath, {
+          method: 'POST',
+          cookie: actor.cookie,
+          csrfToken: actor.csrfToken,
+          body: { draft: { title: 'Forbidden' } },
+        })
+      ).status,
+      403,
+    )
+  }
+  assert.equal(
+    (
+      await request(jobsPath, {
+        method: 'POST',
+        cookie: recruiter.cookie,
+        body: { draft: { title: 'Missing CSRF' } },
+      })
+    ).status,
+    403,
+  )
+
+  const created = await request(jobsPath, {
+    method: 'POST',
+    cookie: recruiter.cookie,
+    csrfToken: recruiter.csrfToken,
+    body: { draft: { title: 'Recruiter draft' } },
+  })
+  assert.equal(created.status, 201)
+  const job = await created.json()
+  assert.equal(job.organizationId, organizationId)
+  assert.equal(job.createdBy, recruiter.user.id)
+  const jobPath = `${jobsPath}/${job.id}`
+
+  assert.equal(
+    (
+      await request(jobPath, {
+        method: 'PATCH',
+        cookie: recruiter.cookie,
+        body: { draft: { title: 'Missing CSRF' } },
+      })
+    ).status,
+    403,
+  )
+  for (const actor of [viewer, outsider, candidate]) {
+    assert.equal(
+      (
+        await request(jobPath, {
+          method: 'PATCH',
+          cookie: actor.cookie,
+          csrfToken: actor.csrfToken,
+          body: { draft: { title: 'Forbidden' } },
+        })
+      ).status,
+      403,
+    )
+  }
+  // An owner in another organization cannot substitute its own URL scope.
+  assert.equal(
+    (
+      await request(`/api/organizations/${outsider.user.organizations[0].id}/jobs/${job.id}`, {
+        method: 'PATCH',
+        cookie: outsider.cookie,
+        csrfToken: outsider.csrfToken,
+        body: { draft: { title: 'Forged scope' } },
+      })
+    ).status,
+    404,
+  )
+  assert.equal(
+    JSON.parse(db.prepare('SELECT draft FROM job_drafts WHERE id = ?').get(job.id).draft).title,
+    'Recruiter draft',
+  )
+
+  for (const actor of [owner, recruiter]) {
+    const updated = await request(jobPath, {
+      method: 'PATCH',
+      cookie: actor.cookie,
+      csrfToken: actor.csrfToken,
+      body: { draft: { title: 'Authorized update' } },
+    })
+    assert.equal(updated.status, 200)
+    assert.equal((await updated.json()).draft.title, 'Authorized update')
+  }
+  db.prepare(
+    'UPDATE organization_memberships SET role = ? WHERE user_id = ? AND organization_id = ?',
+  ).run('viewer', recruiter.user.id, organizationId)
+  assert.equal(
+    (
+      await request(jobPath, {
+        method: 'PATCH',
+        cookie: recruiter.cookie,
+        csrfToken: recruiter.csrfToken,
+        body: { draft: { title: 'Demoted creator' } },
+      })
+    ).status,
+    403,
+  )
+  db.prepare('DELETE FROM organization_memberships WHERE user_id = ? AND organization_id = ?').run(
+    recruiter.user.id,
+    organizationId,
+  )
+  assert.equal(
+    (
+      await request(`/api/organizations/${organizationId}/candidates`, {
+        cookie: recruiter.cookie,
+      })
+    ).status,
+    403,
+  )
+  assert.equal(
+    (
+      await request(jobsPath, {
+        method: 'POST',
+        cookie: recruiter.cookie,
+        csrfToken: recruiter.csrfToken,
+        body: { draft: { title: 'Revoked creator' } },
+      })
+    ).status,
+    403,
+  )
+})
+
+test('candidate resume reads and writes use the session identity', async () => {
+  const first = await signup('candidate')
+  const second = await signup('candidate')
+  const saved = await request('/api/candidate/resume', {
+    method: 'PUT',
+    cookie: first.cookie,
+    csrfToken: first.csrfToken,
+    body: { userId: second.user.id, draft: { institution: 'Private university' } },
+  })
+  assert.equal(saved.status, 200)
+  assert.equal((await saved.json()).userId, first.user.id)
+  const firstResume = await (
+    await request('/api/candidate/resume', {
+      cookie: first.cookie,
+    })
+  ).json()
+  assert.equal(firstResume.draft.institution, 'Private university')
+  const secondResume = await (
+    await request(`/api/candidate/resume?userId=${first.user.id}`, {
+      cookie: second.cookie,
+    })
+  ).json()
+  assert.equal(secondResume.userId, second.user.id)
+  assert.deepEqual(secondResume.draft, {})
 })
 
 test('expired and logged-out sessions are rejected', async () => {
   const expired = await signup('candidate')
-  getDb().prepare("UPDATE sessions SET expires_at = '2000-01-01T00:00:00.000Z' WHERE user_id = ?")
+  getDb()
+    .prepare("UPDATE sessions SET expires_at = '2000-01-01T00:00:00.000Z' WHERE user_id = ?")
     .run(expired.user.id)
   assert.equal((await request('/api/candidate/resume', { cookie: expired.cookie })).status, 401)
 
@@ -240,9 +438,21 @@ test('expired and logged-out sessions are rejected', async () => {
 test('authorization rules enforce scoped ownership and deny missing access', () => {
   const candidate = { id: 'candidate', isCandidate: true, organizations: [] }
   const owner = { id: 'owner', isCandidate: false, organizations: [{ id: 'org', role: 'owner' }] }
-  const recruiter = { id: 'recruiter', isCandidate: false, organizations: [{ id: 'org', role: 'recruiter' }] }
-  const viewer = { id: 'viewer', isCandidate: false, organizations: [{ id: 'org', role: 'viewer' }] }
-  const outside = { id: 'outside', isCandidate: false, organizations: [{ id: 'other', role: 'owner' }] }
+  const recruiter = {
+    id: 'recruiter',
+    isCandidate: false,
+    organizations: [{ id: 'org', role: 'recruiter' }],
+  }
+  const viewer = {
+    id: 'viewer',
+    isCandidate: false,
+    organizations: [{ id: 'org', role: 'viewer' }],
+  }
+  const outside = {
+    id: 'outside',
+    isCandidate: false,
+    organizations: [{ id: 'other', role: 'owner' }],
+  }
   const job = { organizationId: 'org' }
   const project = { id: 'project', organizationId: 'org', status: 'Open' }
 
