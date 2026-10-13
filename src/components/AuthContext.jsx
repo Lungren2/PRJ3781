@@ -1,18 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
+import { authenticatedRequest, logoutSession, parseResponse } from './authClient.js'
 
 const AuthContext = createContext(null)
-
-async function parseResponse(response) {
-  if (response.status === 204) return null
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    const error = new Error(data.error || `Request failed (${response.status})`)
-    error.status = response.status
-    throw error
-  }
-  return data
-}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -60,13 +50,7 @@ export function AuthProvider({ children }) {
   )
 
   const logout = useCallback(async () => {
-    if (csrfToken) {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { 'x-csrf-token': csrfToken },
-      }).then(parseResponse)
-    }
-    applyAuth(null)
+    await logoutSession(csrfToken, () => applyAuth(null))
   }, [applyAuth, csrfToken])
 
   const apiFetch = useCallback(async (path, options = {}) => {
@@ -76,8 +60,8 @@ export function AuthProvider({ children }) {
       headers.set('x-csrf-token', csrfToken)
     }
     if (options.body && !headers.has('content-type')) headers.set('content-type', 'application/json')
-    return fetch(path, { ...options, headers }).then(parseResponse)
-  }, [csrfToken])
+    return authenticatedRequest(path, { ...options, headers }, () => applyAuth(null))
+  }, [csrfToken, applyAuth])
 
   const value = useMemo(() => ({ user, loading, login, signup, logout, apiFetch }), [
     user, loading, login, signup, logout, apiFetch,

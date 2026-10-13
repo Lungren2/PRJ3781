@@ -187,10 +187,15 @@ function Header() {
   const employerTriggerRef = useRef(null)
   const exploreTriggerRef = useRef(null)
   const { user, logout } = useAuth()
+  const toast = useToast()
 
   const signOut = async () => {
-    await logout()
-    setMenuOpen(false)
+    try {
+      await logout()
+      setMenuOpen(false)
+    } catch {
+      toast('Could not log out. Please try again.')
+    }
   }
 
   useEffect(() => {

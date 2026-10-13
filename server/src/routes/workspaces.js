@@ -1,5 +1,5 @@
 import express from 'express'
-import { requireCsrf, requireOrgRole } from '../auth/middleware.js'
+import { requireCandidateDirectoryAccess, requireCsrf, requireOrgRole } from '../auth/middleware.js'
 import { EMPLOYER_ROLES } from '../auth/policies.js'
 import {
   createJob,
@@ -94,6 +94,7 @@ async function loadJob(req, res, next) {
 workspaceRouter.get(
   '/organizations/:organizationId/candidates',
   requireOrgRole(EMPLOYER_ROLES),
+  requireCandidateDirectoryAccess,
   async (req, res, next) => {
     const query = typeof req.query.q === 'string' ? req.query.q.trim().slice(0, 100) : ''
     const workSetup = WORK_SETUPS.includes(req.query.workSetup) ? req.query.workSetup : ''
@@ -109,6 +110,7 @@ workspaceRouter.get(
 workspaceRouter.get(
   '/organizations/:organizationId/candidates/:candidateId/resume',
   requireOrgRole(EMPLOYER_ROLES),
+  requireCandidateDirectoryAccess,
   async (req, res, next) => {
     try {
       const resume = await getVisibleCandidate(req.params.candidateId)

@@ -117,19 +117,21 @@ per-user saved certifications.
 
 All optional; the defaults above apply when unset.
 
-| Variable | Purpose |
-|---|---|
-| `PORT` | API port (default 8787) |
-| `MORROW_USER_AGENT` | Crawler identity — **set this to a real contact URL before deploying** |
-| `MORROW_MIN_REQUEST_INTERVAL_MS` | Per-host request spacing |
-| `MORROW_MAX_REQUESTS_PER_RUN`, `MORROW_MAX_RUN_MINUTES`, `MORROW_MAX_PAGES_PER_PROVIDER` | Run budgets |
-| `MORROW_CRAWL_SCHEDULE_ENABLED`, `MORROW_CRAWL_CRON`, `MORROW_CRAWL_TZ` | Daily scheduled crawl |
-| `MORROW_CORS_ORIGINS` | Comma-separated allowed origins |
-| `MORROW_SESSION_TTL_HOURS` | Opaque login-session lifetime (default `8`) |
-| `MORROW_LOGIN_WINDOW_MINUTES` | In-memory login-rate-limit window (default `15`) |
-| `MORROW_LOGIN_MAX_ATTEMPTS` | Sign-up/login attempts per IP and email per window (default `8`) |
-| `COURSERA_USE_CATALOG_API` | `0` for a strict robots posture |
-| `MICROSOFT_LEARN_ENABLED`, `COURSERA_ENABLED` | Per-provider on/off |
+| Variable                                                                                 | Purpose                                                                                  |
+| ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `PORT`                                                                                   | API port (default 8787)                                                                  |
+| `MORROW_USER_AGENT`                                                                      | Crawler identity — **set this to a real contact URL before deploying**                   |
+| `MORROW_MIN_REQUEST_INTERVAL_MS`                                                         | Per-host request spacing                                                                 |
+| `MORROW_MAX_REQUESTS_PER_RUN`, `MORROW_MAX_RUN_MINUTES`, `MORROW_MAX_PAGES_PER_PROVIDER` | Run budgets                                                                              |
+| `MORROW_CRAWL_SCHEDULE_ENABLED`, `MORROW_CRAWL_CRON`, `MORROW_CRAWL_TZ`                  | Daily scheduled crawl                                                                    |
+| `MORROW_CORS_ORIGINS`                                                                    | Comma-separated allowed origins                                                          |
+| `MORROW_SESSION_TTL_HOURS`                                                               | Opaque login-session lifetime (default `8`)                                              |
+| `MORROW_LOGIN_WINDOW_MINUTES`                                                            | In-memory login-rate-limit window (default `15`)                                         |
+| `MORROW_LOGIN_MAX_ATTEMPTS`                                                              | Sign-up/login attempts per email per window (default `8`)                                |
+| `MORROW_LOGIN_MAX_IP_ATTEMPTS`                                                           | Sign-up/login attempts per IP per window (default `40`)                                  |
+| `MORROW_APPROVED_EMPLOYER_IDS`                                                           | Company IDs allowed to browse the candidate directory; comma-separated, empty blocks all |
+| `COURSERA_USE_CATALOG_API`                                                               | `0` for a strict robots posture                                                          |
+| `MICROSOFT_LEARN_ENABLED`, `COURSERA_ENABLED`                                            | Per-provider on/off                                                                      |
 
 ## Authentication API
 
@@ -172,8 +174,13 @@ owner. Duplicate emails return `409`.
 Authenticated mutations require the session's `x-csrf-token`. Organization
 access is derived from organization membership rather than a global user role.
 
+To approve a demo company, copy its organization ID from `/api/auth/me` into
+`MORROW_APPROVED_EMPLOYER_IDS` in `server/.env`, then restart the API. With Docker,
+set it in the root `.env` and recreate the API container. Existing companies also
+need approval. Applying to a job or project still shares the candidate's CV with
+that company. Run `npm run test:auth-client` to check session handling.
+
 Accounts, sessions, organizations, job drafts and resumes are stored in MongoDB
 (see `src/models/`); SQLite is now only used by the certifications crawler.
 `npm run test:server` starts a throwaway in-memory MongoDB, so it does not touch
 the real database.
-

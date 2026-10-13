@@ -23,7 +23,8 @@ export function canViewProductApplicants(user, organizationId) {
 }
 
 export function canBrowseCandidates(user, organizationId) {
-  return EMPLOYER_ROLES.includes(membershipFor(user, organizationId)?.role)
+  const membership = membershipFor(user, organizationId)
+  return EMPLOYER_ROLES.includes(membership?.role) && membership.canBrowseCandidates === true
 }
 
 export function canManageOrganization(user, organizationId) {

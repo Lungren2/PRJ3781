@@ -1,10 +1,13 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import dotenv from 'dotenv'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 
 export const SERVER_ROOT = path.resolve(here, '..')
 export const REPO_ROOT = path.resolve(SERVER_ROOT, '..')
+
+dotenv.config({ path: path.join(SERVER_ROOT, '.env'), quiet: true })
 
 function num(value, fallback) {
   const parsed = Number(value)
@@ -75,6 +78,11 @@ export const config = {
     secureCookies: process.env.NODE_ENV === 'production',
     loginWindowMinutes: num(process.env.MORROW_LOGIN_WINDOW_MINUTES, 15),
     loginMaxAttempts: num(process.env.MORROW_LOGIN_MAX_ATTEMPTS, 8),
+    loginMaxIpAttempts: num(process.env.MORROW_LOGIN_MAX_IP_ATTEMPTS, 40),
+    approvedEmployerIds: (process.env.MORROW_APPROVED_EMPLOYER_IDS || '')
+      .split(',')
+      .map((id) => id.trim().toLowerCase())
+      .filter(Boolean),
   },
 
   schedule: {

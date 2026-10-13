@@ -37,7 +37,10 @@ function readSignup(body) {
   if (!EMAIL_PATTERN.test(signup.email) || signup.email.length > 254) {
     return { error: 'enter a valid email address' }
   }
-  if (signup.password.length < MIN_PASSWORD_LENGTH || signup.password.length > MAX_PASSWORD_LENGTH) {
+  if (
+    signup.password.length < MIN_PASSWORD_LENGTH ||
+    signup.password.length > MAX_PASSWORD_LENGTH
+  ) {
     return { error: `password must be ${MIN_PASSWORD_LENGTH} to ${MAX_PASSWORD_LENGTH} characters` }
   }
   if (!signup.displayName || signup.displayName.length > 80) {
@@ -46,7 +49,10 @@ function readSignup(body) {
   if (!['candidate', 'employer'].includes(signup.accountType)) {
     return { error: 'account type must be candidate or employer' }
   }
-  if (signup.accountType === 'employer' && (!signup.companyName || signup.companyName.length > 100)) {
+  if (
+    signup.accountType === 'employer' &&
+    (!signup.companyName || signup.companyName.length > 100)
+  ) {
     return { error: 'company name is required (up to 100 characters)' }
   }
   return { signup }
@@ -54,6 +60,11 @@ function readSignup(body) {
 
 export function createAuthRouter() {
   const authRouter = express.Router()
+
+  authRouter.use((req, res, next) => {
+    res.set('Cache-Control', 'no-store')
+    next()
+  })
 
   authRouter.get('/me', (req, res) => {
     res.json({ user: req.user, csrfToken: req.auth?.csrfToken ?? null })
@@ -87,15 +98,22 @@ export function createAuthRouter() {
     }
   })
 
-  authRouter.post('/logout', requireCsrf, async (req, res, next) => {
-    try {
-      await deleteSession(req.auth?.sessionToken)
-      clearSessionCookie(res)
-      res.status(204).end()
-    } catch (error) {
-      next(error)
-    }
-  })
+  authRouter.post(
+    '/logout',
+    (req, res, next) => {
+      if (req.auth) return requireCsrf(req, res, next)
+      next()
+    },
+    async (req, res, next) => {
+      try {
+        await deleteSession(req.auth?.sessionToken)
+        clearSessionCookie(res)
+        res.status(204).end()
+      } catch (error) {
+        next(error)
+      }
+    },
+  )
 
   return authRouter
 }

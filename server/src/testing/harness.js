@@ -11,6 +11,7 @@ export async function startTestServer() {
   process.env.MORROW_DB_PATH = path.join(testDir, 'test.db')
   process.env.MORROW_CRAWL_SCHEDULE_ENABLED = '0'
   process.env.MORROW_LOGIN_MAX_ATTEMPTS = '1000'
+  process.env.MORROW_LOGIN_MAX_IP_ATTEMPTS = '1000'
 
   const mongo = await MongoMemoryServer.create()
   const [{ createApp }, { closeDb }, { connectMongoDB, disconnectMongoDB }] = await Promise.all([

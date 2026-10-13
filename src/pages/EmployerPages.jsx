@@ -123,10 +123,12 @@ export function BrowseCandidatesPage() {
   const [loadError, setLoadError] = useState('')
   const { user, apiFetch } = useAuth()
   const organization = user.organizations[0]
+  const canBrowseCandidates = organization.canBrowseCandidates === true
   const candidatesPath = `/api/organizations/${organization.id}/candidates`
 
   const search = useCallback(
     async (filters = {}) => {
+      if (!canBrowseCandidates) return
       const params = new URLSearchParams()
       if (filters.query) params.set('q', filters.query)
       if (filters.workSetup && filters.workSetup !== 'All setups') params.set('workSetup', filters.workSetup)
@@ -141,12 +143,30 @@ export function BrowseCandidatesPage() {
         setLoading(false)
       }
     },
-    [apiFetch, candidatesPath],
+    [apiFetch, candidatesPath, canBrowseCandidates],
   )
 
   useEffect(() => {
     search()
   }, [search])
+
+  if (!canBrowseCandidates) {
+    return (
+      <main id="main-content" className="product-page">
+        <PageIntro
+          eyebrow="Talent discovery"
+          title="Company approval needed"
+          copy="Your company needs approval before you can browse candidates and download their CVs."
+        />
+        <div className="page-container">
+          <p>You can still post jobs and projects. Candidates who apply will share their CV with your company.</p>
+          <Link className="button button--dark" to="/employers/post-job">
+            Open your workspace
+          </Link>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main id="main-content" className="product-page">

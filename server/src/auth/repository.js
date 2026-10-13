@@ -43,6 +43,7 @@ async function organizationsFor(userId) {
     id: String(organization._id),
     name: organization.name,
     role: organization.members.find((member) => String(member.user) === String(userId)).role,
+    canBrowseCandidates: config.auth.approvedEmployerIds.includes(String(organization._id)),
   }))
 }
 
