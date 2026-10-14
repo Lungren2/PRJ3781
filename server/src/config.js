@@ -87,7 +87,7 @@ export const config = {
 
   mail: {
     appUrl: process.env.MORROW_APP_URL || 'http://127.0.0.1:5173',
-    host: process.env.SMTP_HOST || 'mail.smtp2go.com',
+    host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
     port: num(process.env.SMTP_PORT, 587),
     user: process.env.SMTP_USER || '',
     password: process.env.SMTP_PASS || '',

@@ -6,7 +6,7 @@ This PR adds email verification, password recovery, team invitations, role chang
 
 Still to do:
 
-- Set up SMTP2GO and check email delivery against the hosted app.
+- Finish Brevo sender setup and check email delivery against the hosted app.
 - Account management and basic activity logs. Admin and department roles are placeholders.
 - Check HTTPS, secure cookies and allowed origins when hosting.
 - Stop tracking jobCrawler.env and exclude it from Docker builds. Rotate any live key in it.

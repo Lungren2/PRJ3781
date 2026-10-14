@@ -179,8 +179,10 @@ Password recovery is at `/auth/forgot-password`. Resetting a password logs out a
 sessions. Owners invite teammates and manage roles at `/employers/team`; a company
 must keep at least one owner. The header selector switches company workspaces.
 
-For SMTP2GO, verify a sender and put `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` and
-`MORROW_APP_URL` in `server/.env`. SMTP defaults to `mail.smtp2go.com:587` with TLS.
+For Brevo, verify a sender and put the SMTP login in `SMTP_USER`, SMTP key in
+`SMTP_PASS`, sender address in `MAIL_FROM` and app URL in `MORROW_APP_URL` in
+`server/.env`. SMTP defaults to `smtp-relay.brevo.com:587` with TLS. Use an SMTP
+key, not an API key or account password.
 Use the app's HTTPS URL when hosted. With Docker, use the root `.env` instead.
 See `.env.example` for the settings. Tests capture mail locally and never send it.
 
