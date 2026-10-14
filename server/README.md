@@ -179,6 +179,13 @@ Password recovery is at `/auth/forgot-password`. Resetting a password logs out a
 sessions. Owners invite teammates and manage roles at `/employers/team`; a company
 must keep at least one owner. The header selector switches company workspaces.
 
+Local development prints verification, reset and invite links in the API terminal.
+Open the link to test the full flow; no SMTP account is needed. Docker does the
+same (`docker compose logs -f api`). Set `MORROW_APP_URL` to your frontend URL.
+
+With `NODE_ENV=production`, real email via SMTP is required and console mode is
+rejected. To test real email locally, set `MORROW_MAIL_TRANSPORT=smtp`.
+
 For Brevo, verify a sender and put the SMTP login in `SMTP_USER`, SMTP key in
 `SMTP_PASS`, sender address in `MAIL_FROM` and app URL in `MORROW_APP_URL` in
 `server/.env`. SMTP defaults to `smtp-relay.brevo.com:587` with TLS. Use an SMTP

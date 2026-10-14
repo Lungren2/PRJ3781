@@ -17,7 +17,8 @@ function AccountShell({ title, children }) {
 }
 
 export function AccountPage() {
-  const { user, apiFetch, refreshAuth, mailNotice } = useAuth()
+  const { user, apiFetch, refreshAuth, mailNotice, mailTransport } = useAuth()
+  const consoleMail = mailTransport === 'console'
   const location = useLocation()
   const [message, setMessage] = useState(mailNotice)
   const [busy, setBusy] = useState(false)
@@ -25,7 +26,11 @@ export function AccountPage() {
     setBusy(true)
     try {
       await apiFetch('/api/auth/resend-verification', { method: 'POST' })
-      setMessage('Verification email sent. Check your inbox.')
+      setMessage(
+        consoleMail
+          ? 'Verification link printed in the API terminal.'
+          : 'Verification email sent. Check your inbox.',
+      )
     } catch (error) {
       setMessage(error.message)
     } finally {
@@ -40,7 +45,15 @@ export function AccountPage() {
         ? '/candidates'
         : '/employers'
   return (
-    <AccountShell title={user.emailVerified ? 'Your account' : 'Check your email'}>
+    <AccountShell
+      title={
+        user.emailVerified
+          ? 'Your account'
+          : consoleMail
+            ? 'Verify your account'
+            : 'Check your email'
+      }
+    >
       <h2>{user.displayName}</h2>
       <p>{user.email}</p>
       {user.emailVerified ? (
@@ -52,9 +65,13 @@ export function AccountPage() {
         </>
       ) : (
         <>
-          <p>Open the verification email to finish setting up your account.</p>
+          <p>
+            {consoleMail
+              ? 'Local development: open the verification link printed in the API terminal.'
+              : 'Open the verification email to finish setting up your account.'}
+          </p>
           <button className="button button--dark" disabled={busy} onClick={resend}>
-            Send verification email
+            {consoleMail ? 'Print verification link' : 'Send verification email'}
           </button>
           <button
             className="text-action"
@@ -123,7 +140,7 @@ export function VerifyEmailPage() {
 }
 
 export function ForgotPasswordPage() {
-  const { apiFetch } = useAuth()
+  const { apiFetch, mailTransport } = useAuth()
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
@@ -144,7 +161,11 @@ export function ForgotPasswordPage() {
   }
   return (
     <AccountShell title="Forgot your password?">
-      <p>We will email you a link to choose a new password.</p>
+      <p>
+        {mailTransport === 'console'
+          ? 'Local development: reset links are printed in the API terminal.'
+          : 'We will email you a link to choose a new password.'}
+      </p>
       <form onSubmit={submit}>
         <label className="form-field">
           <span>Email address</span>

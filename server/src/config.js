@@ -9,6 +9,15 @@ export const REPO_ROOT = path.resolve(SERVER_ROOT, '..')
 
 dotenv.config({ path: path.join(SERVER_ROOT, '.env'), quiet: true })
 
+const mailTransport =
+  process.env.MORROW_MAIL_TRANSPORT || (process.env.NODE_ENV === 'production' ? 'smtp' : 'console')
+if (!['console', 'smtp'].includes(mailTransport)) {
+  throw new Error('MORROW_MAIL_TRANSPORT must be console or smtp')
+}
+if (process.env.NODE_ENV === 'production' && mailTransport === 'console') {
+  throw new Error('console email is unavailable in production; use SMTP')
+}
+
 function num(value, fallback) {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
@@ -86,6 +95,7 @@ export const config = {
   },
 
   mail: {
+    transport: mailTransport,
     appUrl: process.env.MORROW_APP_URL || 'http://127.0.0.1:5173',
     host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
     port: num(process.env.SMTP_PORT, 587),

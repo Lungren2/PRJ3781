@@ -1,4 +1,5 @@
 import express from 'express'
+import { config } from '../config.js'
 import { clearSessionCookie, setSessionCookie } from '../auth/cookies.js'
 import { requireCsrf, requireSignedIn } from '../auth/middleware.js'
 import { verifyPassword } from '../auth/passwords.js'
@@ -29,7 +30,11 @@ async function startSession(req, res, user) {
   if (req.auth?.sessionToken) await deleteSession(req.auth.sessionToken)
   const session = await createSession(user._id, user.authVersion ?? 0)
   setSessionCookie(res, session.token, session.expiresAt)
-  return { user: await publicUser(user), csrfToken: session.csrfToken }
+  return {
+    user: await publicUser(user),
+    csrfToken: session.csrfToken,
+    mailTransport: config.mail.transport,
+  }
 }
 
 const text = (value) => (typeof value === 'string' ? value.trim() : '')
@@ -76,7 +81,11 @@ export function createAuthRouter() {
   })
 
   authRouter.get('/me', (req, res) => {
-    res.json({ user: req.user, csrfToken: req.auth?.csrfToken ?? null })
+    res.json({
+      user: req.user,
+      csrfToken: req.auth?.csrfToken ?? null,
+      mailTransport: config.mail.transport,
+    })
   })
 
   authRouter.post('/signup', loginRateLimit, async (req, res, next) => {
@@ -169,7 +178,12 @@ export function createAuthRouter() {
   authRouter.post('/forgot-password', linkRateLimit, async (req, res, next) => {
     try {
       const user = await findUserByEmail(req.body?.email)
-      res.status(202).json({ message: 'If an account exists, check your inbox for a reset link.' })
+      res.status(202).json({
+        message:
+          config.mail.transport === 'console'
+            ? 'If an account exists, its reset link is in the API terminal.'
+            : 'If an account exists, check your inbox for a reset link.',
+      })
       if (user) {
         try {
           await sendAccountLink(user, 'reset', req.app.locals.sendMail)

@@ -4,7 +4,7 @@ import { useAuth } from '../components/AuthContext.jsx'
 
 const ROLES = ['owner', 'recruiter', 'viewer']
 export default function TeamPage() {
-  const { user, activeOrganization: company, apiFetch, refreshAuth } = useAuth()
+  const { user, activeOrganization: company, apiFetch, refreshAuth, mailTransport } = useAuth()
   const [team, setTeam] = useState(null)
   const [email, setEmail] = useState('')
   const [role, setRole] = useState('viewer')
@@ -110,17 +110,25 @@ export default function TeamPage() {
         {owner && (
           <section className="form-surface">
             <h2>Invite a teammate</h2>
+            {mailTransport === 'console' && (
+              <p>Local development: invite links are printed in the API terminal.</p>
+            )}
             <form
               className="account-form"
               onSubmit={(event) => {
                 event.preventDefault()
-                run(async () => {
-                  await apiFetch(`${base}/invitations`, {
-                    method: 'POST',
-                    body: JSON.stringify({ email, role }),
-                  })
-                  setEmail('')
-                }, 'Invitation sent.')
+                run(
+                  async () => {
+                    await apiFetch(`${base}/invitations`, {
+                      method: 'POST',
+                      body: JSON.stringify({ email, role }),
+                    })
+                    setEmail('')
+                  },
+                  mailTransport === 'console'
+                    ? 'Invitation link printed in the API terminal.'
+                    : 'Invitation sent.',
+                )
               }}
             >
               <label className="form-field">

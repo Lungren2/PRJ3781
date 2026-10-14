@@ -20,6 +20,10 @@ export function actionLink(path, token) {
 
 export async function sendEmail(message) {
   const settings = config.mail
+  if (settings.transport === 'console') {
+    console.info(`[dev email] To: ${message.to}\n${message.subject}\n${message.text}`)
+    return
+  }
   if (!settings.user || !settings.password || !settings.from) {
     throw new MailDeliveryError('email sending is not configured yet')
   }

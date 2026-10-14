@@ -10,11 +10,13 @@ export function AuthProvider({ children }) {
   const [csrfToken, setCsrfToken] = useState(null)
   const [loading, setLoading] = useState(true)
   const [mailNotice, setMailNotice] = useState('')
+  const [mailTransport, setMailTransport] = useState('smtp')
   const [selectedOrganizationId, setSelectedOrganizationId] = useState(null)
 
   const applyAuth = useCallback((data) => {
     setUser(data?.user ?? null)
     setCsrfToken(data?.csrfToken ?? null)
+    if (data?.mailTransport) setMailTransport(data.mailTransport)
     setMailNotice(data?.verificationEmailSent === false ? 'Your account was created, but the verification email could not be sent. Please try again below.' : '')
     setSelectedOrganizationId(data?.user ? savedOrganizationId(data.user.id) : null)
     return data?.user ?? null
@@ -84,8 +86,8 @@ export function AuthProvider({ children }) {
     return authenticatedRequest(path, { ...options, headers }, () => applyAuth(null))
   }, [csrfToken, applyAuth])
 
-  const value = useMemo(() => ({ user, loading, login, signup, logout, apiFetch, refreshAuth, activeOrganization, selectOrganization, mailNotice }), [
-    user, loading, login, signup, logout, apiFetch, refreshAuth, activeOrganization, selectOrganization, mailNotice,
+  const value = useMemo(() => ({ user, loading, login, signup, logout, apiFetch, refreshAuth, activeOrganization, selectOrganization, mailNotice, mailTransport }), [
+    user, loading, login, signup, logout, apiFetch, refreshAuth, activeOrganization, selectOrganization, mailNotice, mailTransport,
   ])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
