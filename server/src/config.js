@@ -85,6 +85,15 @@ export const config = {
       .filter(Boolean),
   },
 
+  mail: {
+    appUrl: process.env.MORROW_APP_URL || 'http://127.0.0.1:5173',
+    host: process.env.SMTP_HOST || 'mail.smtp2go.com',
+    port: num(process.env.SMTP_PORT, 587),
+    user: process.env.SMTP_USER || '',
+    password: process.env.SMTP_PASS || '',
+    from: process.env.MAIL_FROM || '',
+  },
+
   schedule: {
     enabled: bool(process.env.MORROW_CRAWL_SCHEDULE_ENABLED, true),
     // Daily, off-peak. The runner adds start jitter and skips overlapping runs.

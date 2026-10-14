@@ -174,6 +174,16 @@ owner. Duplicate emails return `409`.
 Authenticated mutations require the session's `x-csrf-token`. Organization
 access is derived from organization membership rather than a global user role.
 
+Signup sends a verification email. Existing accounts can resend it from `/account`.
+Password recovery is at `/auth/forgot-password`. Resetting a password logs out all
+sessions. Owners invite teammates and manage roles at `/employers/team`; a company
+must keep at least one owner. The header selector switches company workspaces.
+
+For SMTP2GO, verify a sender and put `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` and
+`MORROW_APP_URL` in `server/.env`. SMTP defaults to `mail.smtp2go.com:587` with TLS.
+Use the app's HTTPS URL when hosted. With Docker, use the root `.env` instead.
+See `.env.example` for the settings. Tests capture mail locally and never send it.
+
 To approve a demo company, copy its organization ID from `/api/auth/me` into
 `MORROW_APPROVED_EMPLOYER_IDS` in `server/.env`, then restart the API. With Docker,
 set it in the root `.env` and recreate the API container. Existing companies also

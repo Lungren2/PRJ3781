@@ -147,6 +147,8 @@ export default function ProjectDetailsPage() {
         Log in to apply
       </Link>
     );
+  } else if (!user.emailVerified) {
+    applyAction = <Link className="button button--dark" to="/account" state={{ from: location.pathname }}>Verify your email to apply</Link>;
   } else if (viewer.canApply && viewer.applicationStatus === "completed") {
     applyAction = (
       <Link className="button button--dark" to="/portfolio-builder">

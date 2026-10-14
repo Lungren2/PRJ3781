@@ -70,6 +70,8 @@ export default function JobDetailsPage() {
         Log in to apply
       </Link>
     )
+  } else if (!user.emailVerified) {
+    applyAction = <Link className="button button--dark" to="/account" state={{ from: location.pathname }}>Verify your email to apply</Link>
   } else if (job.viewer.canApply && job.viewer.hasApplied) {
     applyAction = (
       <button

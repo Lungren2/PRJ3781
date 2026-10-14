@@ -22,26 +22,36 @@ export async function optionalAuth(req, res, next) {
   }
 }
 
-export function requireAuth(req, res, next) {
+export function requireSignedIn(req, res, next) {
   if (!req.user) return res.status(401).json({ error: 'authentication required' })
   next()
 }
 
+export function requireAuth(req, res, next) {
+  return requireSignedIn(req, res, () => {
+    if (!req.user.emailVerified)
+      return res.status(403).json({ error: 'verify your email first', code: 'EMAIL_UNVERIFIED' })
+    next()
+  })
+}
+
 export function requireCandidate(req, res, next) {
-  if (!req.user) return res.status(401).json({ error: 'authentication required' })
-  if (!req.user.isCandidate) return res.status(403).json({ error: 'candidate access required' })
-  next()
+  return requireAuth(req, res, () => {
+    if (!req.user.isCandidate) return res.status(403).json({ error: 'candidate access required' })
+    next()
+  })
 }
 
 export function requireOrgRole(allowedRoles) {
   return (req, res, next) => {
-    if (!req.user) return res.status(401).json({ error: 'authentication required' })
-    const membership = req.user.organizations.find(({ id }) => id === req.params.organizationId)
-    if (!membership || !allowedRoles.includes(membership.role)) {
-      return res.status(403).json({ error: 'organization access denied' })
-    }
-    req.membership = membership
-    next()
+    return requireAuth(req, res, () => {
+      const membership = req.user.organizations.find(({ id }) => id === req.params.organizationId)
+      if (!membership || !allowedRoles.includes(membership.role)) {
+        return res.status(403).json({ error: 'organization access denied' })
+      }
+      req.membership = membership
+      next()
+    })
   }
 }
 

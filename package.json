@@ -22,7 +22,7 @@
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
     "test:server": "npm --workspace @morrow/server run test",
-    "test:auth-client": "node --test src/components/authClient.test.js"
+    "test:auth-client": "node --test src/components/authClient.test.js src/components/organizationSelection.test.js"
   },
   "keywords": [],
   "author": "",

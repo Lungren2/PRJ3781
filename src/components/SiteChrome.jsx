@@ -23,6 +23,7 @@ import {
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useToast } from './ToastContext.jsx'
 import { useAuth } from './AuthContext.jsx'
+import CompanySelector from './CompanySelector.jsx'
 
 const candidateLinks = [
   {
@@ -318,6 +319,16 @@ function Header() {
           </div>
         </div>
       </header>
+
+      {user && (
+        <div className="workspace-bar">
+          <div className="page-container workspace-bar__inner">
+            <CompanySelector />
+            <Link to="/account">Account{!user.emailVerified ? ' · verify email' : ''}</Link>
+            {user.organizations.length > 0 && <Link to="/employers/team">Team</Link>}
+          </div>
+        </div>
+      )}
 
       <div
         className={`mobile-menu${menuOpen ? ' mobile-menu--open' : ''}`}

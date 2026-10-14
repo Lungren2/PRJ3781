@@ -703,8 +703,8 @@ export function CertificationsPage() {
 }
 const PROJECT_STATUSES = ['Open', 'In Progress', 'Completed']
 export function ProjectsPage() {
-  const { user, apiFetch } = useAuth()
-  const postingOrganization = user?.organizations.find(({ role }) => role === 'owner' || role === 'recruiter')
+  const { activeOrganization, apiFetch } = useAuth()
+  const postingOrganization = ['owner', 'recruiter'].includes(activeOrganization?.role) ? activeOrganization : null
   const [department, setDepartment] = useState('All departments')
   const [status, setStatus] = useState('Open')
   const [projects, setProjects] = useState([])

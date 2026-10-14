@@ -14,7 +14,9 @@ import {
 } from './pages/DiscoveryPages.jsx'
 import { AccessDeniedPage, AuthPage, NotFoundPage } from './pages/UtilityPages.jsx'
 import { ToastContext } from './components/ToastContext.jsx'
-import { AuthProvider, RequireCandidate, RequireEmployer } from './components/AuthContext.jsx'
+import { AuthProvider, RequireAuth, RequireCandidate, RequireEmployer } from './components/AuthContext.jsx'
+import { AccountPage, ForgotPasswordPage, InvitationPage, ResetPasswordPage, VerifyEmailPage } from './pages/AccountPages.jsx'
+import TeamPage from './pages/TeamPage.jsx'
 import ProjectDetailsPage from "./pages/ProjectDetailsPage.jsx"
 import JobDetailsPage from "./pages/JobDetailsPage.jsx"
 import { PortfolioBuilderPage, PublicPortfolioPage } from "./pages/PortfolioPages.jsx"
@@ -54,6 +56,12 @@ function AppRoutes() {
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="projects/:id" element={<ProjectDetailsPage />} />
         <Route path="auth" element={<AuthPage />} />
+        <Route path="account" element={<RequireAuth><AccountPage /></RequireAuth>} />
+        <Route path="auth/verify" element={<VerifyEmailPage />} />
+        <Route path="auth/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="auth/reset" element={<ResetPasswordPage />} />
+        <Route path="team/invite" element={<InvitationPage />} />
+        <Route path="employers/team" element={<RequireEmployer><TeamPage /></RequireEmployer>} />
         <Route path="forbidden" element={<AccessDeniedPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

@@ -31,7 +31,9 @@ export function AuthPage() {
 
   const finishLogin = (nextUser) => {
     const fallback = nextUser.isCandidate ? '/candidates' : '/employers'
-    navigate(location.state?.from || fallback, { replace: true })
+    const from = location.state?.from
+    const destination = typeof from === 'string' && from.startsWith('/') && !from.startsWith('//') ? from : fallback
+    navigate(nextUser.emailVerified ? destination : '/account', { replace: true, state: { from: destination } })
   }
 
   const submit = (authenticate) => async (event) => {
@@ -84,8 +86,7 @@ export function AuthPage() {
         <p className="eyebrow">Morrow accounts</p>
         <h1>Keep your next move in one place.</h1>
         <p>
-          Future accounts will connect saved jobs, resumes, applications, learning, and completed
-          projects.
+          Keep your profile, applications and company workspaces together.
         </p>
         <ul>
           <li>
@@ -168,6 +169,7 @@ export function AuthPage() {
               <button className="button button--dark" type="submit" disabled={busy}>
                 {busy ? 'Signing in…' : 'Log in'}
               </button>
+              <Link to="/auth/forgot-password">Forgot your password?</Link>
             </form>
           )}
 

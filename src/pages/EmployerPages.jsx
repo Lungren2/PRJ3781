@@ -121,8 +121,7 @@ export function BrowseCandidatesPage() {
   const [candidates, setCandidates] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
-  const { user, apiFetch } = useAuth()
-  const organization = user.organizations[0]
+  const { activeOrganization: organization, apiFetch } = useAuth()
   const canBrowseCandidates = organization.canBrowseCandidates === true
   const candidatesPath = `/api/organizations/${organization.id}/candidates`
 
@@ -390,8 +389,7 @@ export function PostJobPage() {
   const [busy, setBusy] = useState(false)
   const [openApplicants, setOpenApplicants] = useState(null)
   const toast = useToast()
-  const { user, apiFetch } = useAuth()
-  const organization = user.organizations[0]
+  const { activeOrganization: organization, apiFetch } = useAuth()
   const canEdit = organization.role === 'owner' || organization.role === 'recruiter'
   const jobsPath = `/api/organizations/${organization.id}/jobs`
   const projectsPath = `/api/organizations/${organization.id}/product-requests`

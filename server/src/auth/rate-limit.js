@@ -1,7 +1,9 @@
 import { config } from '../config.js'
 
-const emailKey = (req) =>
-  `email:${typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : ''}`
+const emailKey = (req) => {
+  const value = req.body?.email ?? req.user?.email ?? req.ip
+  return `email:${typeof value === 'string' ? value.trim().toLowerCase() : ''}`
+}
 
 export function createLoginLimiter({
   windowMs = config.auth.loginWindowMinutes * 60 * 1000,

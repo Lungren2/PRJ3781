@@ -12,6 +12,13 @@ services:
     command: npm run dev:api
     environment:
       PORT: '8787'
+      MONGODB_URI: ${MONGODB_URI:-}
+      MORROW_APP_URL: ${MORROW_APP_URL:-http://127.0.0.1:5173}
+      SMTP_HOST: ${SMTP_HOST:-mail.smtp2go.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
       # Kept off the bind-mounted source tree and on named volumes, so the
       # database and HTTP cache survive rebuilds without landing in the repo.
       MORROW_DB_PATH: /app/server/data/morrow.db

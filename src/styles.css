@@ -3906,3 +3906,72 @@ p {
   color: var(--color-muted);
   font-size: 0.8125rem;
 }
+
+.workspace-bar {
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-brand-soft);
+  padding-block: 0.75rem;
+}
+
+.workspace-bar__inner {
+  padding-block: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.875rem;
+}
+
+.workspace-bar__inner > span {
+  overflow-wrap: anywhere;
+}
+
+.company-selector {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.company-selector select {
+  max-width: 100%;
+  min-width: 0;
+  padding: 0.5rem;
+  border: 1px solid var(--color-line);
+  background: var(--color-white);
+  font: inherit;
+}
+
+.account-content,
+.team-layout {
+  padding-block: 2rem;
+}
+
+.account-form,
+.account-form form,
+.team-layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.account-form {
+  max-width: 36rem;
+}
+
+.team-row {
+  display: grid;
+  gap: 1rem;
+  align-items: center;
+  padding-block: 1rem;
+  border-bottom: 1px solid var(--color-line);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+@media (min-width: 40rem) {
+  .team-row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 12rem) auto;
+  }
+}
