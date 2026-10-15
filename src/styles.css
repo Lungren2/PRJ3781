@@ -532,8 +532,11 @@ p {
   border-bottom: 0.0625rem solid var(--color-line);
 }
 
-.company-mark {
+.opportunity-row > .company-mark {
   grid-area: mark;
+}
+
+.company-mark {
   display: grid;
   place-items: center;
   width: 3rem;
